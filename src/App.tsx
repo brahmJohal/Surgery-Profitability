@@ -225,7 +225,7 @@ export default function App() {
       </div>
     </details>
     {isAdmin && (
-       <details className="manage" open>
+       <details className="manage">
               <summary>Admin: Online Sales fixed referral</summary>
 
            <div className="card manage-card">
@@ -247,7 +247,7 @@ export default function App() {
      )}
 
     {isAdmin && (
-      <details className="manage" open>
+      <details className="manage">
         <summary>Admin: Review or edit an existing surgery</summary>
 
         <div className="card manage-card">
