@@ -35,6 +35,7 @@ export default function App() {
   const [newCosts, setNewCosts] = useState<CostFields>(blankCosts)
   const [editingId, setEditingId] = useState('')
   const [editingCosts, setEditingCosts] = useState<CostFields>(blankCosts)
+  const [editingName, setEditingName] = useState('')
   const [onlineSalesReferral, setOnlineSalesReferral] = useState(15000)
   const [onlineSalesReferralDraft, setOnlineSalesReferralDraft] = useState(15000)
   const isAdmin = role === 'admin'
@@ -99,7 +100,14 @@ export default function App() {
     if (surgeries.some(item => item.name.toLowerCase() === name.toLowerCase())) { setStatus('This surgery already exists.'); return }
     try { await saveSurgery({ name, ...newCosts, active:true }); const items = await refresh(); const added = items.find(item => item.name === name); if (added) choose(added.id); setNewName(''); setNewCosts(blankCosts); setStatus('New surgery added successfully.') } catch { setStatus('Could not add surgery. Check your database setup.') }
   }
-  const selectExisting = (id: string) => { const item = surgeries.find(s => s.id === id); if (!item || !isFullSurgery(item)) return; setEditingId(id); setEditingCosts(surgeryCosts(item)) }
+  const selectExisting = (id: string) => {
+  const item = surgeries.find(s => s.id === id)
+   if (!item || !isFullSurgery(item)) return
+
+   setEditingId(id)
+   setEditingName(item.name)
+   setEditingCosts(surgeryCosts(item))
+   }
   const saveOnlineSalesReferral = async () => {
   try {
     await saveOnlineSalesFixedReferral(onlineSalesReferralDraft)
@@ -109,7 +117,7 @@ export default function App() {
           setStatus('Could not update Online Sales setting.')
                }
    }
-  const saveExisting = async () => { const existing = surgeries.find(item => item.id === editingId); if (!existing || !isFullSurgery(existing)) return; try { await saveSurgery({ id:editingId, name:existing.name, active:existing.active, ...editingCosts }); const items = await refresh(); const edited = items.find(item => item.id === editingId); if (edited && selectedId === editingId) setValues(current => ({...current, billing:edited.standard_billing})); setStatus('Existing surgery expenses updated.') } catch { setStatus('Could not update this surgery.') } }
+  const saveExisting = async () => { const existing = surgeries.find(item => item.id === editingId); if (!existing || !isFullSurgery(existing)) return; try { await saveSurgery({ id:editingId, name:editingName.trim(), active:existing.active, ...editingCosts }); const items = await refresh(); const edited = items.find(item => item.id === editingId); if (edited && selectedId === editingId) setValues(current => ({...current, billing:edited.standard_billing})); setStatus('Existing surgery expenses updated.') } catch { setStatus('Could not update this surgery.') } }
   const signOut = async () => { if (supabase) await supabase.auth.signOut(); else { signOutLocally(); setRole(null) } }
 
   if (!role) return <Auth onLocalLogin={setRole} />
@@ -252,11 +260,13 @@ export default function App() {
 
         <div className="card manage-card">
           <label className="field">
-            <span>Existing surgery</span>
-            <select value={editingId} onChange={e => selectExisting(e.target.value)}>
-              {surgeries.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
+            <span>Surgery name</span>
+              <input
+                value={editingName}
+                onChange={e => setEditingName(e.target.value)}
+                placeholder="Enter surgery name"
+                />
+           </label>
 
           <CostInputs costs={editingCosts} setCosts={setEditingCosts} />
           <button className="primary" onClick={saveExisting}>Save expense changes</button>
