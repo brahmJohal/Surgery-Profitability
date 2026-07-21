@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { UserRole } from '../types'
 import { supabase } from '../lib/supabase'
 import { signInLocally } from '../lib/localAuth'
@@ -7,6 +7,7 @@ export function Auth({ onLocalLogin }: { onLocalLogin: (role: UserRole) => void 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
+  const passwordInput = useRef<HTMLInputElement>(null)
 
   const submit = async () => {
     setMessage('')
@@ -20,5 +21,48 @@ export function Auth({ onLocalLogin }: { onLocalLogin: (role: UserRole) => void 
     if (error) setMessage(error.message)
   }
 
-  return <main className="auth"><section className="card auth-card"><div className="hospital-mark">TH</div><h1>True Hospitals</h1><p>Sign in to Surgery Profitability.</p><label className="field"><span>Email address</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@truehospitals.com" autoComplete="username" /></label><label className="field"><span>Password</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" onKeyDown={e=>e.key === 'Enter' && submit()} /></label><button className="primary" onClick={submit}>Sign in</button>{message && <p className="status auth-error">{message}</p>}</section></main>
+  return (
+  <main className="auth">
+    <section className="card auth-card">
+      <div className="hospital-mark">TH</div>
+      <h1>True Hospitals</h1>
+      <p>Sign in to Surgery Profitability.</p>
+
+      <label className="field">
+        <span>Email address</span>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="name@truehospitals.com"
+          autoComplete="username"
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              passwordInput.current?.focus()
+            }
+          }}
+        />
+      </label>
+
+      <label className="field">
+        <span>Password</span>
+        <input
+          ref={passwordInput}
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          autoComplete="current-password"
+          onKeyDown={e => {
+            if (e.key === 'Enter') submit()
+          }}
+        />
+      </label>
+
+      <button className="primary" onClick={submit}>Sign in</button>
+
+      {message && <p className="status auth-error">{message}</p>}
+    </section>
+  </main>
+ )
 }
