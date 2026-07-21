@@ -36,11 +36,12 @@ export default function App() {
   const [editingId, setEditingId] = useState('')
   const [editingCosts, setEditingCosts] = useState<CostFields>(blankCosts)
   const isAdmin = role === 'admin'
+  const isOnlineSales = role === 'online_sales'
 
   async function roleFromSession(userId: string): Promise<UserRole> {
     if (!supabase) return 'sales'
     const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle()
-    return data?.role === 'admin' ? 'admin' : 'sales'
+    return data?.role === 'admin' ? 'admin' : data?.role === 'online_sales' ? 'online_sales' : 'sales'
   }
   useEffect(() => {
     if (!supabase) return
@@ -56,7 +57,7 @@ export default function App() {
       setSurgeries(items)
       const first = items[0]
       setSelectedId(first?.id || '')
-      setValues({...empty, billing:first?.standard_billing || 0})
+      setValues({...empty, billing:first?.standard_billing || 0, referralShare: role === 'online_sales' ? 15000 : 0})
       if (first && isFullSurgery(first)) {
         setEditingId(first?.id || '')
         setEditingCosts(surgeryCosts(first))
@@ -74,7 +75,7 @@ export default function App() {
   }, [surgery?.id, values.billing, values.doctorShare, values.referralShare, values.extraRental])
 
   const update = (key:keyof Calculation) => (value:number) => setValues(current => ({...current, [key]:value}))
-  const choose = (id:string) => { const item = surgeries.find(s => s.id === id); setSelectedId(id); setValues({...empty, billing:item?.standard_billing || 0}); setStatus('') }
+  const choose = (id:string) => { const item = surgeries.find(s => s.id === id); setSelectedId(id); setValues({...empty, billing:item?.standard_billing || 0, referralShare:role === 'online_sales' ? 15000 : 0}); setStatus('') }
   const refresh = async () => { if (!role) return []; const items = await getSurgeries(role); setSurgeries(items); return items }
   const save = async () => { if (!surgery) return; try { await saveCalculation(surgery.id, values); setStatus('Calculation saved successfully.') } catch { setStatus('Could not save. Check your database setup.') } }
   const addSurgery = async () => {
@@ -89,5 +90,134 @@ export default function App() {
 
   if (!role) return <Auth onLocalLogin={setRole} />
   if (loading) return <main className="loading">Loading calculator…</main>
-  return <><header><div><strong>True Hospitals</strong><small>{isAdmin ? 'Admin dashboard' : 'Sales calculator'}</small></div><div className="header-actions"><span>{isAdmin ? 'Administrator' : 'Sales team'}</span><button className="signout" onClick={signOut}>Sign out</button></div></header><main><p className="notice">Select a procedure, enter the case-specific payouts, and confirm profitability before closing the surgery.</p><div className="grid"><section className="card"><h1>Calculate a surgery</h1><label className="field"><span>Surgery / procedure</span><select value={selectedId} onChange={e=>choose(e.target.value)}>{surgeries.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><AmountInput label="Surgery billing" help="standard amount is pre-filled" value={values.billing} onChange={update('billing')} /><h2>Enter for this case</h2><div className="two"><AmountInput label="Doctor share" value={values.doctorShare} onChange={update('doctorShare')} /><AmountInput label="Referral share" value={values.referralShare} onChange={update('referralShare')} /></div><AmountInput label="Extra rental, if any" value={values.extraRental} onChange={update('extraRental')} /><div className="payout"><span>Total variable payouts</span><b>{money(values.doctorShare + values.referralShare + values.extraRental)}</b></div><button className="primary" onClick={save}>Save calculation</button>{status && <p className="status">{status}</p>}</section><aside className="card summary"><h1>Profit summary</h1><div className={result.profit < 0 ? 'result loss' : 'result'}><small>{result.profit < 0 ? 'Estimated loss' : 'Estimated profit'}</small><strong>{money(Math.abs(result.profit))}</strong></div><Metric label="Surgery billing" value={money(values.billing)} />{isAdmin && <Metric label="Fixed procedure costs" value={'− '+money(adminFixedCost)} />}<Metric label="Doctor share" value={'− '+money(values.doctorShare)} /><Metric label="Referral share" value={'− '+money(values.referralShare)} /><Metric label="Extra rental" value={'− '+money(values.extraRental)} /><p className="margin">Profit margin <b>{result.margin.toFixed(1)}%</b></p></aside></div><details className="manage"><summary>Add a new surgery</summary><div className="card manage-card"><p className="form-help">Enter the standard billing and all expected expenses for this new surgery.</p><label className="field"><span>Surgery name</span><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g. Appendix surgery" /></label><CostInputs costs={newCosts} setCosts={setNewCosts} /><button className="primary" onClick={addSurgery}>Add surgery</button></div></details>{isAdmin && <details className="manage" open><summary>Admin: Review or edit an existing surgery</summary><div className="card manage-card"><label className="field"><span>Existing surgery</span><select value={editingId} onChange={e=>selectExisting(e.target.value)}>{surgeries.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><CostInputs costs={editingCosts} setCosts={setEditingCosts} /><button className="primary" onClick={saveExisting}>Save expense changes</button></div></details>}</main></>
+  return <>
+  <header>
+    <div>
+      <strong>True Hospitals</strong>
+      <small>{isAdmin ? 'Admin dashboard' : 'Sales calculator'}</small>
+    </div>
+
+    <div className="header-actions">
+      <span>{isAdmin ? 'Administrator' : 'Sales team'}</span>
+      <button className="signout" onClick={signOut}>Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <p className="notice">
+      Select a procedure, enter the case-specific payouts, and confirm profitability before closing the surgery.
+    </p>
+
+    <div className="grid">
+      <section className="card">
+        <h1>Calculate a surgery</h1>
+
+        <label className="field">
+          <span>Surgery / procedure</span>
+          <select value={selectedId} onChange={e => choose(e.target.value)}>
+            {surgeries.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+
+        <AmountInput
+          label="Surgery billing"
+          help="standard amount is pre-filled"
+          value={values.billing}
+          onChange={update('billing')}
+        />
+
+        <h2>Enter for this case</h2>
+
+        <div className="two">
+          <AmountInput
+            label="Doctor share"
+            value={values.doctorShare}
+            onChange={update('doctorShare')}
+          />
+
+          {!isOnlineSales && (
+            <AmountInput
+              label="Referral share"
+              value={values.referralShare}
+              onChange={update('referralShare')}
+            />
+          )}
+        </div>
+
+        {isOnlineSales && (
+          <p className="form-help">Fixed referral share: ₹15,000</p>
+        )}
+
+        <AmountInput
+          label="Extra rental, if any"
+          value={values.extraRental}
+          onChange={update('extraRental')}
+        />
+
+        <div className="payout">
+          <span>Total variable payouts</span>
+          <b>{money(values.doctorShare + values.referralShare + values.extraRental)}</b>
+        </div>
+
+        <button className="primary" onClick={save}>Save calculation</button>
+        {status && <p className="status">{status}</p>}
+      </section>
+
+      <aside className="card summary">
+        <h1>Profit summary</h1>
+
+        <div className={result.profit < 0 ? 'result loss' : 'result'}>
+          <small>{result.profit < 0 ? 'Estimated loss' : 'Estimated profit'}</small>
+          <strong>{money(Math.abs(result.profit))}</strong>
+        </div>
+
+        <Metric label="Surgery billing" value={money(values.billing)} />
+        {isAdmin && <Metric label="Fixed procedure costs" value={'− ' + money(adminFixedCost)} />}
+        <Metric label="Doctor share" value={'− ' + money(values.doctorShare)} />
+        <Metric label="Referral share" value={'− ' + money(values.referralShare)} />
+        <Metric label="Extra rental" value={'− ' + money(values.extraRental)} />
+
+        <p className="margin">Profit margin <b>{result.margin.toFixed(1)}%</b></p>
+      </aside>
+    </div>
+
+    <details className="manage">
+      <summary>Add a new surgery</summary>
+
+      <div className="card manage-card">
+        <p className="form-help">Enter the standard billing and all expected expenses for this new surgery.</p>
+
+        <label className="field">
+          <span>Surgery name</span>
+          <input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="e.g. Appendix surgery"
+          />
+        </label>
+
+        <CostInputs costs={newCosts} setCosts={setNewCosts} />
+        <button className="primary" onClick={addSurgery}>Add surgery</button>
+      </div>
+    </details>
+
+    {isAdmin && (
+      <details className="manage" open>
+        <summary>Admin: Review or edit an existing surgery</summary>
+
+        <div className="card manage-card">
+          <label className="field">
+            <span>Existing surgery</span>
+            <select value={editingId} onChange={e => selectExisting(e.target.value)}>
+              {surgeries.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+
+          <CostInputs costs={editingCosts} setCosts={setEditingCosts} />
+          <button className="primary" onClick={saveExisting}>Save expense changes</button>
+        </div>
+      </details>
+    )}
+  </main>
+</>
 }
