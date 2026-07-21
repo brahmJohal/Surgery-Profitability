@@ -8,6 +8,7 @@ export function Auth({ onLocalLogin }: { onLocalLogin: (role: UserRole) => void 
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const passwordInput = useRef<HTMLInputElement>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   const submit = async () => {
     setMessage('')
@@ -46,18 +47,34 @@ export function Auth({ onLocalLogin }: { onLocalLogin: (role: UserRole) => void 
       </label>
 
       <label className="field">
-        <span>Password</span>
-        <input
-          ref={passwordInput}
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          autoComplete="current-password"
-          onKeyDown={e => {
-            if (e.key === 'Enter') submit()
-          }}
-        />
-      </label>
+              <span>Password</span>
+
+                     <div className="password-wrap">
+                        <input
+                                 ref={passwordInput}
+                                 type={showPassword ? 'text' : 'password'}
+                                 value={password}
+                                 onChange={e => setPassword(e.target.value)}
+                                 autoComplete="current-password"
+                                 onKeyDown={e => {
+                                 if (e.key === 'Enter') submit()
+                                     }}
+                         />
+
+                       <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                              {showPassword ? (
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10.8 10.8 0 0 1 12 5c5.5 0 9.3 4.4 10 7-0.3 1.2-1.3 2.8-2.9 4.2M6.2 6.2C4.1 7.7 2.6 10.2 2 12c0.7 2.6 4.5 7 10 7 1 0 1.9-0.1 2.8-0.4" />
+                                </svg>
+                                 ) : (
+                                       <svg viewBox="0 0 24 24" aria-hidden="true">
+                                       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                                       <circle cx="12" cy="12" r="3" />
+                                       </svg>
+                                       )}
+                          </button>
+                    </div>
+          </label>
 
       <button className="primary" onClick={submit}>Sign in</button>
 

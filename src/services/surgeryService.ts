@@ -18,7 +18,6 @@ export async function getOnlineSalesFixedReferral(): Promise<number> {
   if (error) throw error
   return Number(data || 15000)
 }
-
 export async function saveOnlineSalesFixedReferral(amount: number) {
   if (!supabase) return
   const { error } = await supabase.rpc('admin_set_online_sales_fixed_referral', {
@@ -26,7 +25,6 @@ export async function saveOnlineSalesFixedReferral(amount: number) {
   })
   if (error) throw error
 }
-
 export async function calculateProfit(surgeryId: string, values: Calculation): Promise<ProfitResult> {
   if (!supabase) {
     const surgery = localSurgeries().find(item => item.id === surgeryId)
