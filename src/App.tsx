@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Calculation, ProfitResult, Surgery, SurgerySummary, UserRole } from './types'
-import { calculateProfit, getSurgeries, saveCalculation, saveSurgery } from './services/surgeryService'
+import { calculateProfit, getOnlineSalesFixedReferral, getSurgeries, saveCalculation, saveOnlineSalesFixedReferral, saveSurgery } from './services/surgeryService'
 import { money, numberValue } from './lib/money'
 import { supabase } from './lib/supabase'
 import { getLocalSession, signOutLocally } from './lib/localAuth'
@@ -35,6 +35,8 @@ export default function App() {
   const [newCosts, setNewCosts] = useState<CostFields>(blankCosts)
   const [editingId, setEditingId] = useState('')
   const [editingCosts, setEditingCosts] = useState<CostFields>(blankCosts)
+  const [onlineSalesReferral, setOnlineSalesReferral] = useState(15000)
+  const [onlineSalesReferralDraft, setOnlineSalesReferralDraft] = useState(15000)
   const isAdmin = role === 'admin'
   const isOnlineSales = role === 'online_sales'
 
@@ -51,13 +53,26 @@ export default function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
   useEffect(() => {
+  if (!role) return
+
+  getOnlineSalesFixedReferral()
+    .then(amount => {
+      setOnlineSalesReferral(amount)
+      setOnlineSalesReferralDraft(amount)
+
+      if (role === 'online_sales') {
+        setValues(current => ({ ...current, referralShare: amount }))
+        }})
+       .catch(() => setStatus('Could not load Online Sales setting.'))
+   }, [role])
+  useEffect(() => {
     if (!role) return
     setLoading(true)
     getSurgeries(role).then(items => {
       setSurgeries(items)
       const first = items[0]
       setSelectedId(first?.id || '')
-      setValues({...empty, billing:first?.standard_billing || 0, referralShare: role === 'online_sales' ? 15000 : 0})
+      setValues({...empty, billing:first?.standard_billing || 0, referralShare: role === 'online_sales' ? onlineSalesReferral : 0})
       if (first && isFullSurgery(first)) {
         setEditingId(first?.id || '')
         setEditingCosts(surgeryCosts(first))
@@ -75,7 +90,7 @@ export default function App() {
   }, [surgery?.id, values.billing, values.doctorShare, values.referralShare, values.extraRental])
 
   const update = (key:keyof Calculation) => (value:number) => setValues(current => ({...current, [key]:value}))
-  const choose = (id:string) => { const item = surgeries.find(s => s.id === id); setSelectedId(id); setValues({...empty, billing:item?.standard_billing || 0, referralShare:role === 'online_sales' ? 15000 : 0}); setStatus('') }
+  const choose = (id:string) => { const item = surgeries.find(s => s.id === id); setSelectedId(id); setValues({...empty, billing:item?.standard_billing || 0, referralShare:role === 'online_sales' ? onlineSalesReferral : 0}); setStatus('') }
   const refresh = async () => { if (!role) return []; const items = await getSurgeries(role); setSurgeries(items); return items }
   const save = async () => { if (!surgery) return; try { await saveCalculation(surgery.id, values); setStatus('Calculation saved successfully.') } catch { setStatus('Could not save. Check your database setup.') } }
   const addSurgery = async () => {
@@ -85,6 +100,15 @@ export default function App() {
     try { await saveSurgery({ name, ...newCosts, active:true }); const items = await refresh(); const added = items.find(item => item.name === name); if (added) choose(added.id); setNewName(''); setNewCosts(blankCosts); setStatus('New surgery added successfully.') } catch { setStatus('Could not add surgery. Check your database setup.') }
   }
   const selectExisting = (id: string) => { const item = surgeries.find(s => s.id === id); if (!item || !isFullSurgery(item)) return; setEditingId(id); setEditingCosts(surgeryCosts(item)) }
+  const saveOnlineSalesReferral = async () => {
+  try {
+    await saveOnlineSalesFixedReferral(onlineSalesReferralDraft)
+    setOnlineSalesReferral(onlineSalesReferralDraft)
+    setStatus('Online Sales fixed referral updated successfully.')
+      } catch {
+          setStatus('Could not update Online Sales setting.')
+               }
+   }
   const saveExisting = async () => { const existing = surgeries.find(item => item.id === editingId); if (!existing || !isFullSurgery(existing)) return; try { await saveSurgery({ id:editingId, name:existing.name, active:existing.active, ...editingCosts }); const items = await refresh(); const edited = items.find(item => item.id === editingId); if (edited && selectedId === editingId) setValues(current => ({...current, billing:edited.standard_billing})); setStatus('Existing surgery expenses updated.') } catch { setStatus('Could not update this surgery.') } }
   const signOut = async () => { if (supabase) await supabase.auth.signOut(); else { signOutLocally(); setRole(null) } }
 
@@ -145,7 +169,7 @@ export default function App() {
         </div>
 
         {isOnlineSales && (
-          <p className="form-help">Fixed referral share: ₹15,000</p>
+          <p className="form-help">Fixed referral share: {money(onlineSalesReferral)}</p>
         )}
 
         <AmountInput
@@ -200,6 +224,27 @@ export default function App() {
         <button className="primary" onClick={addSurgery}>Add surgery</button>
       </div>
     </details>
+    {isAdmin && (
+       <details className="manage" open>
+              <summary>Admin: Online Sales fixed referral</summary>
+
+           <div className="card manage-card">
+                <p className="form-help">
+                     This amount is automatically applied to Online Sales users.
+                  </p>
+
+             <AmountInput
+                 label="Fixed referral share for Online Sales"
+                  value={onlineSalesReferralDraft}
+                  onChange={setOnlineSalesReferralDraft}
+               />
+
+                <button className="primary" onClick={saveOnlineSalesReferral}>
+                     Save Online Sales Setting
+                   </button>
+             </div>
+         </details>
+     )}
 
     {isAdmin && (
       <details className="manage" open>

@@ -12,6 +12,20 @@ export async function getSurgeries(role: UserRole): Promise<SurgerySummary[]> {
   if (error) throw error
   return data as SurgerySummary[]
 }
+export async function getOnlineSalesFixedReferral(): Promise<number> {
+  if (!supabase) return 15000
+  const { data, error } = await supabase.rpc('get_online_sales_fixed_referral')
+  if (error) throw error
+  return Number(data || 15000)
+}
+
+export async function saveOnlineSalesFixedReferral(amount: number) {
+  if (!supabase) return
+  const { error } = await supabase.rpc('admin_set_online_sales_fixed_referral', {
+    p_amount: amount,
+  })
+  if (error) throw error
+}
 
 export async function calculateProfit(surgeryId: string, values: Calculation): Promise<ProfitResult> {
   if (!supabase) {
