@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import type { Calculation, ProfitResult, Surgery, SurgerySummary, UserRole } from './types'
 import { calculateProfit, getOnlineSalesFixedReferral, getSurgeries, saveCalculation, saveOnlineSalesFixedReferral, saveSurgery } from './services/surgeryService'
 import { money, numberValue } from './lib/money'
@@ -264,5 +265,6 @@ export default function App() {
       </details>
     )}
   </main>
+  <Analytics />
 </>
 }
