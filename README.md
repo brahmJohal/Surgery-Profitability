@@ -20,7 +20,7 @@ An internal web application for sales staff to check the estimated profit of a s
 1. Install Node.js 20 or later.
 2. Run `npm install`.
 3. Create a Supabase project.
-4. In Supabase SQL Editor, run `supabase/migrations/001_initial_schema.sql`.
+4. In Supabase SQL Editor, run the migrations in order: `supabase/migrations/001_initial_schema.sql`, then `supabase/migrations/002_online_and_offline_sales_roles.sql`.
 5. Copy `.env.example` to `.env` and fill in the URL and anonymous key from Supabase Project Settings → API.
 6. Run `npm run dev` and open the URL shown in the terminal.
 
@@ -28,11 +28,11 @@ Without `.env`, the calculator uses sample procedures for a visual demonstration
 
 ## Demo accounts
 
-The local demonstration has one admin account and one shared sales account. This local-only sign-in is for testing on a single Mac; it is not secure enough for a public deployment. For the live version, create the users in Supabase Authentication and set the administrator's `profiles.role` to `admin`.
+The local demonstration has admin, offline-sales, and online-sales accounts. Their shared password is `True@123`; the emails are `admin@truehospitals.com`, `offline.sales@truehospitals.com`, and `online.sales@truehospitals.com`. This local-only sign-in is for testing on a single Mac; it is not secure enough for a public deployment. For the live version, create the users in Supabase Authentication and assign `admin`, `offline_sales`, or `online_sales` in `profiles.role`.
 
 ## Deployment
 
-Push this folder to GitHub, import it into Vercel, and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Vercel environment variables. Run the migration once in Supabase before going live.
+Push this folder to GitHub, import it into Vercel, and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Vercel environment variables. Run both migrations in order in Supabase before going live.
 
 ## Important production next steps
 

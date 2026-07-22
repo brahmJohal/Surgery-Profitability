@@ -140,7 +140,7 @@ export default function App() {
   const isOnlineSales = role === 'online_sales'
 
   async function roleFromSession(userId: string): Promise<UserRole> {
-    if (!supabase) return 'sales'
+    if (!supabase) return 'offline_sales'
 
     const { data } = await supabase
       .from('profiles')
@@ -151,7 +151,7 @@ export default function App() {
     if (data?.role === 'admin') return 'admin'
     if (data?.role === 'online_sales') return 'online_sales'
 
-    return 'sales'
+    return 'offline_sales'
   }
 
   useEffect(() => {
