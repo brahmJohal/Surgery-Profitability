@@ -12,6 +12,8 @@ import { money, numberValue } from './lib/money'
 import { supabase } from './lib/supabase'
 import { getLocalSession, signOutLocally } from './lib/localAuth'
 import { Auth } from './components/Auth'
+import { SalesPatientEntry } from './components/SalesPatientEntry'
+import { FinanceDashboard } from './components/FinanceDashboard'
 
 const empty: Calculation = {
   billing: 0,
@@ -135,6 +137,7 @@ export default function App() {
 
   const [onlineSalesReferral, setOnlineSalesReferral] = useState(15000)
   const [onlineSalesReferralDraft, setOnlineSalesReferralDraft] = useState(15000)
+  const [salesView, setSalesView] = useState<'calculator' | 'patient-queue'>('calculator')
 
   const isAdmin = role === 'admin'
   const isOnlineSales = role === 'online_sales'
@@ -149,6 +152,7 @@ export default function App() {
       .maybeSingle()
 
     if (data?.role === 'admin') return 'admin'
+    if (data?.role === 'finance') return 'finance'
     if (data?.role === 'online_sales') return 'online_sales'
 
     return 'offline_sales'
@@ -378,21 +382,25 @@ export default function App() {
   if (!role) return <Auth onLocalLogin={setRole} />
   if (loading) return <main className="loading">Loading calculator…</main>
 
+  const isSales = role === 'online_sales' || role === 'offline_sales'
+  const isFinance = role === 'finance'
+
   return (
     <>
       <header>
         <div>
           <strong>True Hospitals</strong>
-          <small>{isAdmin ? 'Admin dashboard' : 'Sales calculator'}</small>
+          <small>{isAdmin ? 'Admin dashboard' : isFinance ? 'Finance reconciliation' : salesView === 'patient-queue' ? 'Sales patient queue' : 'Sales calculator'}</small>
         </div>
 
         <div className="header-actions">
-          <span>{isAdmin ? 'Administrator' : 'Sales team'}</span>
+          <span>{isAdmin ? 'Administrator' : isFinance ? 'Finance team' : 'Sales team'}</span>
+          {isSales && <button className="header-button" onClick={() => setSalesView(current => current === 'calculator' ? 'patient-queue' : 'calculator')}>{salesView === 'patient-queue' ? 'Profit calculator' : 'Add patient'}</button>}
           <button className="signout" onClick={signOut}>Sign out</button>
         </div>
       </header>
 
-      <main>
+      {isFinance ? <FinanceDashboard /> : isSales && salesView === 'patient-queue' ? <SalesPatientEntry role={role} /> : <main>
         <p className="notice">
           Select a procedure, enter the case-specific payouts, and confirm profitability before closing the surgery.
         </p>
@@ -564,7 +572,7 @@ export default function App() {
             </div>
           </details>
         )}
-      </main>
+      </main>}
     </>
   )
 }

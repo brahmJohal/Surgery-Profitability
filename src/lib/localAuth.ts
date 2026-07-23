@@ -5,6 +5,7 @@ type LocalSession = { email: string; role: UserRole }
 // Local demonstration login only. Move authentication to Supabase before public deployment.
 const accounts: Array<LocalSession & { password: string }> = [
   { email: 'admin@truehospitals.com', password: 'True@123', role: 'admin' },
+  { email: 'finance@truehospitals.com', password: 'True@123', role: 'finance' },
   { email: 'offline.sales@truehospitals.com', password: 'True@123', role: 'offline_sales' },
   { email: 'online.sales@truehospitals.com', password: 'True@123', role: 'online_sales' },
 ]
