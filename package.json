@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "sh ./scripts/dev-local.sh",
+    "ocr": "local-ocr/.venv/bin/uvicorn mou_ocr_service:app --app-dir local-ocr --host 127.0.0.1 --port 8000",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

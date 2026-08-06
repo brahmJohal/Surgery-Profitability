@@ -5,6 +5,7 @@ export type ImportedReconciliation = {
     | "Doctor"
     | "Referral"
     | "Anaesthetist"
+    | "Assistant Surgeon"
     | "Partner"
     | "Vendor"
     | "Lab"
@@ -12,6 +13,17 @@ export type ImportedReconciliation = {
     | "Implant"
     | "Other";
   surgeryAmount: number;
+  externalLab: number;
+  implant: number;
+  patientSource: string;
+  dci: number;
+  crossConsultation: number;
+  referralCommission: number;
+  externalDiagnostics: number;
+  anaesthetist: number;
+  consumables: number;
+  specialEquipment: number;
+  externalVisit: number;
 };
 
 const normaliseHeader = (value: string) =>
@@ -141,6 +153,8 @@ function entriesFromRows(rows: string[][]): ImportedReconciliation[] {
       referral: "Referral",
       anaesthetist: "Anaesthetist",
       anesthetist: "Anaesthetist",
+      assistantsurgeon: "Assistant Surgeon",
+      assistant: "Assistant Surgeon",
       partner: "Partner",
       vendor: "Vendor",
       lab: "Lab",
@@ -150,6 +164,23 @@ function entriesFromRows(rows: string[][]): ImportedReconciliation[] {
     };
     const type = typeByValue[typeValue] || null;
     const surgeryAmount = amountValue(row[indexOf("surgeryamount")] || "");
+    const optionalAmount = (name: string) => {
+      const index = indexOf(name);
+      return index < 0 || !(row[index] || "").trim()
+        ? 0
+        : amountValue(row[index] || "");
+    };
+    const externalLab = optionalAmount("externallab");
+    const implant = optionalAmount("implant");
+    const dci = optionalAmount("dci");
+    const crossConsultation = optionalAmount("crossconsultation");
+    const referralCommission = optionalAmount("referralcommission");
+    const externalDiagnostics = optionalAmount("externaldiagnostics");
+    const anaesthetist = optionalAmount("anaesthetist");
+    const consumables = optionalAmount("consumables");
+    const specialEquipment = optionalAmount("specialequipment");
+    const externalVisit = optionalAmount("externalvisit");
+    const patientSource = (row[indexOf("patientsource")] || "").trim();
     const caseRef = (row[indexOf("casereference")] || "").trim();
     const payee = (row[indexOf("payee")] || "").trim();
     if (!caseRef && !payee && !typeValue && !surgeryAmount) return [];
@@ -158,16 +189,19 @@ function entriesFromRows(rows: string[][]): ImportedReconciliation[] {
       !payee ||
       !type ||
       !Number.isFinite(surgeryAmount) ||
-      surgeryAmount < 0
+      surgeryAmount < 0 ||
+      !Number.isFinite(externalLab) ||
+      !Number.isFinite(implant) ||
+      [externalLab, implant, dci, crossConsultation, referralCommission, externalDiagnostics, anaesthetist, consumables, specialEquipment, externalVisit].some((amount) => !Number.isFinite(amount) || amount < 0)
     ) {
       invalid.push(rowIndex + 2);
       return [];
     }
-    return [{ caseRef, payee, type, surgeryAmount }];
+    return [{ caseRef, payee, type, surgeryAmount, externalLab, implant, patientSource, dci, crossConsultation, referralCommission, externalDiagnostics, anaesthetist, consumables, specialEquipment, externalVisit }];
   });
   if (invalid.length)
     throw new Error(
-      `Fix row${invalid.length > 1 ? "s" : ""} ${invalid.join(", ")}. Type must be Doctor, Referral, Anaesthetist, Partner, Vendor, Lab, Rental, Implant, or Other; surgery amount must be valid.`,
+      `Fix row${invalid.length > 1 ? "s" : ""} ${invalid.join(", ")}. Type must be Doctor, Referral, Anaesthetist, Assistant Surgeon, Partner, Vendor, Lab, Rental, Implant, or Other; all amounts must be valid.`,
     );
   if (!entries.length) throw new Error("No reconciliation rows were found.");
   return entries;

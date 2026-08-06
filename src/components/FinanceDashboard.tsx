@@ -11,6 +11,41 @@ type Payable = {
   tds: number;
   status: PayableStatus;
   bank: string;
+  eligibleRevenue?: number;
+  excludedCosts?: number;
+  percentage?: number;
+};
+type ReconciliationRule = {
+  id: string;
+  payee: string;
+  role: string;
+  patientSource: "doctor_patient" | "hospital_patient";
+  payoutMethod: "percentage" | "surgeon_fee";
+  surgeonFee: number;
+  revenueBasis: "billed" | "settled_tpa" | "payment_received" | "remaining_amount" | "partner_commission" | "fixed";
+  percentage: number;
+  deductExternalLab: boolean;
+  deductImplant: boolean;
+  deductDci: boolean;
+  deductCrossConsultation: boolean;
+  deductReferralCommission: boolean;
+  deductExternalDiagnostics: boolean;
+  deductAnaesthetist: boolean;
+  deductConsumables: boolean;
+  deductSpecialEquipment: boolean;
+  deductExternalVisit: boolean;
+  opdSharePercentage: number;
+  opdPrice: number;
+  fixedRental: number;
+  fixedMonthlyAmount: number;
+  effectiveFrom: string;
+  effectiveTo: string;
+  wardVisitCharge: number;
+  icuEmergencyVisitCharge: number;
+  paymentTerms: string;
+  notes: string;
+  mouFileName?: string;
+  mouUploadedAt?: string;
 };
 type PayableGroup = {
   key: string;
@@ -35,6 +70,40 @@ const savedPayables = (): Payable[] =>
   JSON.parse(localStorage.getItem("financePayables") || "[]");
 const savedPayeeProfiles = (): PayeeProfile[] =>
   JSON.parse(localStorage.getItem("financePayeeProfiles") || "[]");
+const emptyRule: ReconciliationRule = {
+  id: "",
+  payee: "",
+  role: "Doctor",
+  patientSource: "doctor_patient",
+  payoutMethod: "percentage",
+  surgeonFee: 0,
+  revenueBasis: "remaining_amount",
+  percentage: 20,
+  deductExternalLab: true,
+  deductImplant: true,
+  deductDci: false,
+  deductCrossConsultation: false,
+  deductReferralCommission: false,
+  deductExternalDiagnostics: false,
+  deductAnaesthetist: false,
+  deductConsumables: false,
+  deductSpecialEquipment: false,
+  deductExternalVisit: false,
+  opdSharePercentage: 0,
+  opdPrice: 0,
+  fixedRental: 0,
+  fixedMonthlyAmount: 0,
+  effectiveFrom: "",
+  effectiveTo: "",
+  wardVisitCharge: 0,
+  icuEmergencyVisitCharge: 0,
+  paymentTerms: "",
+  notes: "",
+};
+const savedRules = (): ReconciliationRule[] =>
+  JSON.parse(localStorage.getItem("financeReconciliationRules") || "[]").map(
+    (rule: Partial<ReconciliationRule>) => ({ ...emptyRule, ...rule }),
+  );
 const emptyPayeeProfile: PayeeProfile = {
   name: "",
   category: "Doctor",
@@ -55,7 +124,7 @@ const money = (value: number) =>
 export function FinanceDashboard() {
   const [payables, setPayables] = useState<Payable[]>(savedPayables);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "queue" | "history" | "bank"
+    "dashboard" | "queue" | "agreements" | "history" | "bank"
   >("dashboard");
   const [message, setMessage] = useState("");
   const [importing, setImporting] = useState(false);
@@ -64,10 +133,18 @@ export function FinanceDashboard() {
     useState<PayeeProfile[]>(savedPayeeProfiles);
   const [payeeForm, setPayeeForm] = useState<PayeeProfile>(emptyPayeeProfile);
   const [payeeModalOpen, setPayeeModalOpen] = useState(false);
+  const [rules, setRules] = useState<ReconciliationRule[]>(savedRules);
+  const [ruleForm, setRuleForm] = useState<ReconciliationRule>(emptyRule);
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const mouInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const savePayables = (next: Payable[]) => {
     setPayables(next);
     localStorage.setItem("financePayables", JSON.stringify(next));
+  };
+  const saveRules = (next: ReconciliationRule[]) => {
+    setRules(next);
+    localStorage.setItem("financeReconciliationRules", JSON.stringify(next));
   };
   const totals = useMemo(
     () => ({
@@ -211,6 +288,38 @@ export function FinanceDashboard() {
     setPayeeModalOpen(true);
   };
 
+  const openRule = (rule?: ReconciliationRule) => {
+    setRuleForm(rule || { ...emptyRule, id: `RULE-${Date.now()}` });
+    setRuleModalOpen(true);
+  };
+  const saveRule = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const payee = ruleForm.payee.trim();
+    if (
+      !payee ||
+      (ruleForm.payoutMethod === "percentage" && (ruleForm.percentage < 0 || ruleForm.percentage > 100)) ||
+      (ruleForm.payoutMethod === "surgeon_fee" && ruleForm.surgeonFee <= 0)
+    ) {
+      setMessage("Enter a payee and a valid percentage or surgeon fee.");
+      return;
+    }
+    const nextRule = { ...ruleForm, payee };
+    saveRules([...rules.filter((rule) => rule.id !== nextRule.id), nextRule]);
+    setRuleModalOpen(false);
+    setMessage(`Reconciliation agreement saved for ${payee}.`);
+  };
+  const attachMou = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    setRuleForm((current) => ({
+      ...current,
+      mouFileName: file.name,
+      mouUploadedAt: new Date().toISOString(),
+    }));
+    setMessage("MOU document attached. Enter the agreement terms manually, then save.");
+  };
+
   const importFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -219,21 +328,54 @@ export function FinanceDashboard() {
     try {
       const rows = await importReconciliationFile(file);
       const additions = rows.map(
-        (row, index): Payable => ({
-          id: `PAY-${Date.now().toString().slice(-6)}-${index + 1}`,
-          payee: row.payee,
-          type: row.type,
-          caseRef: row.caseRef,
-          gross: row.surgeryAmount * 0.2,
-          tds: 0,
-          status: "approved",
-          bank: "Bank details pending",
-        }),
+        (row, index): Payable => {
+          const matchingRules = rules.filter(
+            (rule) =>
+              rule.payee.trim().toLowerCase() === row.payee.trim().toLowerCase() &&
+              rule.role.toLowerCase() === row.type.toLowerCase(),
+          );
+          const importedPatientSource = row.patientSource.toLowerCase().includes("doctor")
+            ? "doctor_patient"
+            : "hospital_patient";
+          const matchingRule = row.patientSource
+            ? matchingRules.find(
+                (rule) => rule.patientSource === importedPatientSource,
+              )
+            : matchingRules[0];
+          const percentage = matchingRule?.percentage ?? 20;
+          const excludedCosts =
+            (matchingRule?.deductExternalLab ?? true ? row.externalLab : 0) +
+            (matchingRule?.deductImplant ?? true ? row.implant : 0) +
+            (matchingRule?.deductDci ? row.dci : 0) +
+            (matchingRule?.deductCrossConsultation ? row.crossConsultation : 0) +
+            (matchingRule?.deductReferralCommission ? row.referralCommission : 0) +
+            (matchingRule?.deductExternalDiagnostics ? row.externalDiagnostics : 0) +
+            (matchingRule?.deductAnaesthetist ? row.anaesthetist : 0) +
+            (matchingRule?.deductConsumables ? row.consumables : 0) +
+            (matchingRule?.deductSpecialEquipment ? row.specialEquipment : 0) +
+            (matchingRule?.deductExternalVisit ? row.externalVisit : 0);
+          const eligibleRevenue = Math.max(0, row.surgeryAmount - excludedCosts);
+          return {
+            id: `PAY-${Date.now().toString().slice(-6)}-${index + 1}`,
+            payee: row.payee,
+            type: row.type,
+            caseRef: row.caseRef,
+            gross: matchingRule?.payoutMethod === "surgeon_fee"
+              ? matchingRule.surgeonFee
+              : eligibleRevenue * (percentage / 100),
+            eligibleRevenue,
+            excludedCosts,
+            percentage,
+            tds: 0,
+            status: "approved",
+            bank: "Bank details pending",
+          };
+        },
       );
       savePayables([...additions, ...payables]);
       setActiveTab("queue");
       setMessage(
-        `${additions.length} payout${additions.length === 1 ? "" : "s"} calculated at 20% and added to Monday's queue.`,
+        `${additions.length} payout${additions.length === 1 ? "" : "s"} calculated from each payee's agreement and added to Monday's queue.`,
       );
     } catch (error) {
       setMessage(
@@ -271,7 +413,7 @@ export function FinanceDashboard() {
           >
             {importing ? "Importing…" : "Import Excel"}
           </button>
-          <small>20% payout → Monday queue</small>
+          <small>Agreement-based payout → Monday queue</small>
         </div>
       </section>
 
@@ -287,6 +429,12 @@ export function FinanceDashboard() {
           onClick={() => setActiveTab("queue")}
         >
           Payment queue
+        </button>
+        <button
+          className={activeTab === "agreements" ? "active" : ""}
+          onClick={() => setActiveTab("agreements")}
+        >
+          MOU agreements
         </button>
         <button
           className={activeTab === "history" ? "active" : ""}
@@ -331,16 +479,18 @@ export function FinanceDashboard() {
               <div>
                 <h1>Monday payment checklist</h1>
                 <p className="form-help">
-                  Import an Excel file with Case Reference, Payee, Type (Doctor
-                  or Referral), and Surgery Amount. The payout is automatically
-                  20% of surgery amount.
+                  Import Case Reference, Payee, Type, and Surgery Amount. Add
+                  optional Patient Source (Doctor or Hospital), DCI, Cross Consultation, Referral Commission,
+                  External Diagnostics, Anaesthetist, Consumables, Special Equipment,
+                  External Visit, External Lab, and Implant columns. The selected
+                  MOU rule removes only its configured deductions before sharing.
                 </p>
               </div>
               <span className="source-badge">Next run: Monday</span>
             </div>
             <ol className="checklist">
               <li>Import the completed expense and surgery workbook.</li>
-              <li>Review the automatically calculated 20% payouts.</li>
+              <li>Review the agreement-based payout and its eligible revenue.</li>
               <li>Verify bank details and TDS, then mark payments as paid.</li>
             </ol>
             {message && <p className="status">{message}</p>}
@@ -387,7 +537,9 @@ export function FinanceDashboard() {
                               {item.caseRef} · {item.type}
                             </span>
                             <b>{money(item.gross - item.tds)}</b>
-                            <small>{item.status}</small>
+                            <small>
+                              {item.percentage ?? 20}% of {money(item.eligibleRevenue ?? 0)} eligible revenue · {item.status}
+                            </small>
                           </div>
                         ))}
                       </div>
@@ -433,6 +585,92 @@ export function FinanceDashboard() {
             )}
           </div>
           {message && <p className="status">{message}</p>}
+        </section>
+      )}
+
+      {activeTab === "agreements" && (
+        <section className="card">
+          <div className="section-title">
+            <div>
+              <h1>Doctor & referral MOU agreements</h1>
+              <p className="form-help">
+                Record each doctor’s MOU exactly: patient source, revenue basis, deductions, OPD share, rental, visit charges, fixed monthly amount, and payment terms.
+              </p>
+            </div>
+            <button className="primary" onClick={() => openRule()}>
+              Add agreement
+            </button>
+          </div>
+          <div className="agreement-list">
+            {rules.length ? rules.map((rule) => (
+              <article className="agreement-row" key={rule.id}>
+                <div>
+                  <strong>{rule.payee}</strong>
+                  <span>{rule.role} · {rule.patientSource === "doctor_patient" ? "Doctor’s patient" : "Hospital’s patient"} · {rule.payoutMethod === "surgeon_fee" ? `Surgeon fee ${money(rule.surgeonFee)}` : `${rule.percentage}% of ${rule.revenueBasis.replace(/_/g, " ")}`}</span>
+                  <small>
+                    {rule.fixedMonthlyAmount ? `Fixed monthly ${money(rule.fixedMonthlyAmount)} · ` : ""}{rule.opdSharePercentage ? `OPD ${rule.opdSharePercentage}% · ` : ""}Exclusions recorded · {rule.mouFileName ? `MOU: ${rule.mouFileName}` : "Manual agreement"}
+                    {rule.mouFileName ? ` · MOU: ${rule.mouFileName}` : " · Manual agreement"}
+                  </small>
+                </div>
+                <button className="secondary" onClick={() => openRule(rule)}>Edit</button>
+              </article>
+            )) : (
+              <p className="form-help">No agreements yet. Add the doctor or referral terms before importing cases.</p>
+            )}
+          </div>
+          {ruleModalOpen && (
+            <div className="modal-backdrop" role="presentation" onMouseDown={() => setRuleModalOpen(false)}>
+              <section className="payee-modal" role="dialog" aria-modal="true" aria-label="Reconciliation agreement" onMouseDown={(event) => event.stopPropagation()}>
+                <div className="section-title">
+                  <div>
+                    <h1>{ruleForm.payee ? `Agreement for ${ruleForm.payee}` : "New reconciliation agreement"}</h1>
+                    <p className="form-help">Enter the agreement terms manually. You can attach an MOU file as a record.</p>
+                  </div>
+                  <button className="modal-close" onClick={() => setRuleModalOpen(false)} aria-label="Close">×</button>
+                </div>
+                <form onSubmit={saveRule}>
+                  {message && <p className="status">{message}</p>}
+                  <div className="two">
+                    <label className="field"><span>Doctor / payee name</span><input required value={ruleForm.payee} onChange={(e) => setRuleForm((current) => ({ ...current, payee: e.target.value }))} placeholder="e.g. Dr Mehta" /></label>
+                    <label className="field"><span>Payout role</span><select value={ruleForm.role} onChange={(e) => setRuleForm((current) => ({ ...current, role: e.target.value }))}><option>Doctor</option><option>Referral</option><option>Anaesthetist</option><option>Assistant Surgeon</option><option>Partner</option></select></label>
+                    <label className="field"><span>Patient type & payout</span><select value={`${ruleForm.patientSource}:${ruleForm.payoutMethod}`} onChange={(e) => { const [patientSource, payoutMethod] = e.target.value.split(":") as [ReconciliationRule["patientSource"], ReconciliationRule["payoutMethod"]]; setRuleForm((current) => ({ ...current, patientSource, payoutMethod })); }}><option value="doctor_patient:percentage">Doctor’s patient — percentage after deductions</option><option value="hospital_patient:percentage">Hospital’s patient — percentage after deductions</option><option value="hospital_patient:surgeon_fee">Hospital’s patient — fixed surgeon fee</option></select></label>
+                    <label className="field"><span>Revenue basis</span><select value={ruleForm.revenueBasis} onChange={(e) => setRuleForm((current) => ({ ...current, revenueBasis: e.target.value as ReconciliationRule["revenueBasis"] }))}><option value="billed">Gross billed amount</option><option value="settled_tpa">Settled TPA amount</option><option value="payment_received">Payment received</option><option value="remaining_amount">Remaining amount after deductions</option><option value="partner_commission">Partner commission</option><option value="fixed">Fixed amount</option></select></label>
+                    {ruleForm.payoutMethod === "percentage" ? <label className="field"><span>IPD / revenue share percentage</span><div className="amount"><b>%</b><input required type="number" min="0" max="100" step="0.01" value={ruleForm.percentage} onChange={(e) => setRuleForm((current) => ({ ...current, percentage: Number(e.target.value) }))} /></div></label> : <label className="field"><span>Fixed surgeon fee per case</span><div className="amount"><b>₹</b><input required type="number" min="0" value={ruleForm.surgeonFee || ""} onChange={(e) => setRuleForm((current) => ({ ...current, surgeonFee: Number(e.target.value) }))} /></div></label>}
+                    <div className="mou-upload"><span>MOU document <em>optional record</em></span><input ref={mouInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={attachMou} /><small>{ruleForm.mouFileName ? `Attached: ${ruleForm.mouFileName}` : "Attach a PDF or image for the agreement record."}</small></div>
+                  </div>
+                  <h2>Revenue deductions before this share</h2>
+                  <div className="exclusion-checks">
+                    <label><input type="checkbox" checked={ruleForm.deductDci} onChange={(e) => setRuleForm((current) => ({ ...current, deductDci: e.target.checked }))} /> Deduct DCI</label>
+                    <label><input type="checkbox" checked={ruleForm.deductCrossConsultation} onChange={(e) => setRuleForm((current) => ({ ...current, deductCrossConsultation: e.target.checked }))} /> Deduct cross-consultation</label>
+                    <label><input type="checkbox" checked={ruleForm.deductReferralCommission} onChange={(e) => setRuleForm((current) => ({ ...current, deductReferralCommission: e.target.checked }))} /> Deduct referral commission</label>
+                    <label><input type="checkbox" checked={ruleForm.deductExternalLab} onChange={(e) => setRuleForm((current) => ({ ...current, deductExternalLab: e.target.checked }))} /> Deduct external lab from total revenue</label>
+                    <label><input type="checkbox" checked={ruleForm.deductExternalDiagnostics} onChange={(e) => setRuleForm((current) => ({ ...current, deductExternalDiagnostics: e.target.checked }))} /> Deduct external diagnostics / ultrasound</label>
+                    <label><input type="checkbox" checked={ruleForm.deductAnaesthetist} onChange={(e) => setRuleForm((current) => ({ ...current, deductAnaesthetist: e.target.checked }))} /> Deduct anaesthetist cost</label>
+                    <label><input type="checkbox" checked={ruleForm.deductConsumables} onChange={(e) => setRuleForm((current) => ({ ...current, deductConsumables: e.target.checked }))} /> Deduct consumables</label>
+                    <label><input type="checkbox" checked={ruleForm.deductSpecialEquipment} onChange={(e) => setRuleForm((current) => ({ ...current, deductSpecialEquipment: e.target.checked }))} /> Deduct special rented equipment</label>
+                    <label><input type="checkbox" checked={ruleForm.deductExternalVisit} onChange={(e) => setRuleForm((current) => ({ ...current, deductExternalVisit: e.target.checked }))} /> Deduct external doctor visit cost</label>
+                    <label><input type="checkbox" checked={ruleForm.deductImplant} onChange={(e) => setRuleForm((current) => ({ ...current, deductImplant: e.target.checked }))} /> Deduct implant from total revenue</label>
+                  </div>
+                  <h2>OPD, fixed and payment terms</h2>
+                  <div className="three">
+                    <label className="field"><span>OPD share percentage</span><div className="amount"><b>%</b><input type="number" min="0" max="100" value={ruleForm.opdSharePercentage || ""} onChange={(e) => setRuleForm((current) => ({ ...current, opdSharePercentage: Number(e.target.value) }))} /></div></label>
+                    <label className="field"><span>OPD price / visit</span><div className="amount"><b>₹</b><input type="number" min="0" value={ruleForm.opdPrice || ""} onChange={(e) => setRuleForm((current) => ({ ...current, opdPrice: Number(e.target.value) }))} /></div></label>
+                    <label className="field"><span>Fixed rental / month</span><div className="amount"><b>₹</b><input type="number" min="0" value={ruleForm.fixedRental || ""} onChange={(e) => setRuleForm((current) => ({ ...current, fixedRental: Number(e.target.value) }))} /></div></label>
+                    <label className="field"><span>Fixed monthly payment</span><div className="amount"><b>₹</b><input type="number" min="0" value={ruleForm.fixedMonthlyAmount || ""} onChange={(e) => setRuleForm((current) => ({ ...current, fixedMonthlyAmount: Number(e.target.value) }))} /></div></label>
+                    <label className="field"><span>Ward / day visit charge</span><div className="amount"><b>₹</b><input type="number" min="0" value={ruleForm.wardVisitCharge || ""} onChange={(e) => setRuleForm((current) => ({ ...current, wardVisitCharge: Number(e.target.value) }))} /></div></label>
+                    <label className="field"><span>ICU / emergency visit charge</span><div className="amount"><b>₹</b><input type="number" min="0" value={ruleForm.icuEmergencyVisitCharge || ""} onChange={(e) => setRuleForm((current) => ({ ...current, icuEmergencyVisitCharge: Number(e.target.value) }))} /></div></label>
+                  </div>
+                  <div className="two">
+                    <label className="field"><span>Payment timing</span><input value={ruleForm.paymentTerms} onChange={(e) => setRuleForm((current) => ({ ...current, paymentTerms: e.target.value }))} placeholder="e.g. Within 48 hours of surgery / 5th of following month" /></label>
+                    <label className="field"><span>Other MOU notes</span><input value={ruleForm.notes} onChange={(e) => setRuleForm((current) => ({ ...current, notes: e.target.value }))} placeholder="e.g. 20 OT/month, ₹3,000/OT after 20" /></label>
+                    <label className="field"><span>Effective from <em>optional</em></span><input type="date" value={ruleForm.effectiveFrom} onChange={(e) => setRuleForm((current) => ({ ...current, effectiveFrom: e.target.value }))} /></label>
+                    <label className="field"><span>Effective to <em>optional</em></span><input type="date" value={ruleForm.effectiveTo} onChange={(e) => setRuleForm((current) => ({ ...current, effectiveTo: e.target.value }))} /></label>
+                  </div>
+                  <button className="primary">Save agreement</button><button type="button" className="secondary" onClick={() => setRuleModalOpen(false)}>Cancel</button>
+                </form>
+              </section>
+            </div>
+          )}
         </section>
       )}
 

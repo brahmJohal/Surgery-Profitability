@@ -34,6 +34,12 @@ The local demonstration has admin, finance, offline-sales, and online-sales acco
 
 Push this folder to GitHub, import it into Vercel, and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Vercel environment variables. Run all migrations in order in Supabase before going live.
 
+### Private MOU reading
+
+The Finance MOU agreement screen uses the included local OCR service. It reads PDF/image MOUs on a local computer or private hospital server and does not require an OpenAI or Google API key. Follow [local-ocr/README.md](local-ocr/README.md) to install and run it. Finance should verify the populated terms before saving the agreement.
+
+For local use, run `npm run dev:local` to start both the hospital app and MOU reader together.
+
 ## Important production next steps
 
 - Add Supabase email/password or OTP login screens.
