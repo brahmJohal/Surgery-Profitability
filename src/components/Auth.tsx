@@ -39,9 +39,13 @@ export function Auth({
   return (
     <main className="auth">
       <section className="card auth-card">
-        <div className="hospital-mark">TH</div>
-        <h1>True Hospitals</h1>
-        <p>Sign in to Surgery Profitability.</p>
+        <img
+          className="auth-logo"
+          src="/trueartis-logo.png"
+          alt="TrueArtis"
+        />
+        <h1>TrueArtis</h1>
+        <p>Hospital Finance &amp; Reconciliation</p>
 
         <label className="field">
           <span>Email address</span>
