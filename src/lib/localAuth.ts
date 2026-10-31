@@ -2,6 +2,10 @@ import type { UserRole } from "../types";
 
 type LocalSession = { email: string; role: UserRole };
 
+// Demo identities are deliberately limited to the Vite development server.
+// A deployed app must use Supabase Authentication; browser-stored roles are not secure.
+export const localDemoAuthEnabled = import.meta.env.DEV;
+
 // Local demonstration login only. Move authentication to Supabase before public deployment.
 const accounts: Array<LocalSession & { password: string }> = [
   { email: "admin@truehospitals.com", password: "True@123", role: "admin" },
@@ -23,6 +27,7 @@ export function signInLocally(
   email: string,
   password: string,
 ): LocalSession | null {
+  if (!localDemoAuthEnabled) return null;
   const account = accounts.find(
     (item) =>
       item.email === email.trim().toLowerCase() && item.password === password,
@@ -34,6 +39,7 @@ export function signInLocally(
 }
 
 export function getLocalSession(): LocalSession | null {
+  if (!localDemoAuthEnabled) return null;
   try {
     return JSON.parse(sessionStorage.getItem(storageKey) || "null");
   } catch {

@@ -1,5 +1,14 @@
 export type ImportedReconciliation = {
   caseRef: string;
+  surgeryName: string;
+  patientName: string;
+  patientPhone: string;
+  uhid: string;
+  hospitalName: string;
+  admissionDate: string;
+  dischargeDate: string;
+  totalExpense: number;
+  reportedProfit: number;
   payee: string;
   type:
     | "Doctor"
@@ -16,14 +25,28 @@ export type ImportedReconciliation = {
   externalLab: number;
   implant: number;
   patientSource: string;
+  caseType: string;
+  partnerType: string;
   dci: number;
   crossConsultation: number;
   referralCommission: number;
   externalDiagnostics: number;
   anaesthetist: number;
+  anaesthesiaHours: number;
+  assistantSurgeon: number;
   consumables: number;
   specialEquipment: number;
   externalVisit: number;
+  b2bPartnerPayout: number;
+  bloodProcurement: number;
+  corporateDiscountAdjustment: number;
+  customPayout: number;
+  emiReimbursementCost: number;
+  medicalEquipmentRental: number;
+  outsideLabPayout: number;
+  referralPayout: number;
+  surgeonPayout: number;
+  visitingConsultantFee: number;
 };
 
 const normaliseHeader = (value: string) =>
@@ -132,10 +155,94 @@ async function xlsxRows(file: File): Promise<string[][]> {
   );
 }
 
+function hospitalSheetEntries(
+  columns: string[],
+  data: string[][],
+): ImportedReconciliation[] {
+  const indexOf = (name: string) => columns.indexOf(name);
+  const textAt = (row: string[], name: string) => {
+    const index = indexOf(name);
+    return index < 0 ? "" : (row[index] || "").trim();
+  };
+  const amountAt = (row: string[], name: string) => {
+    const value = textAt(row, name);
+    return value ? amountValue(value) : 0;
+  };
+  const comparableName = (name: string) =>
+    name.toLowerCase().replace(/\bdr\.?\s*/g, "").replace(/[^a-z0-9]/g, "");
+  const invalid: number[] = [];
+  const entries = data.flatMap((row, rowIndex) => {
+    const caseRef = textAt(row, "ipdnumber");
+    const doctorName = textAt(row, "doctorname");
+    const referrerName = textAt(row, "referrername");
+    const partnerName = textAt(row, "partnerleadname");
+    const anaesthetistName = textAt(row, "anaesthetistname");
+    const surgeryAmount = amountAt(row, "totalrevenue") || amountAt(row, "netbilledamount");
+    if (!caseRef && !doctorName && !partnerName && !anaesthetistName) return [];
+    if (!caseRef || !Number.isFinite(surgeryAmount) || surgeryAmount < 0) {
+      invalid.push(rowIndex + 2);
+      return [];
+    }
+    const shared = {
+      caseRef,
+      surgeryName: textAt(row, "surgerynames"),
+      patientName: textAt(row, "patientname"),
+      patientPhone: textAt(row, "patientphone"),
+      uhid: textAt(row, "uhid"),
+      hospitalName: textAt(row, "hospitalname"),
+      admissionDate: textAt(row, "admissiondate"),
+      dischargeDate: textAt(row, "dischargedate"),
+      totalExpense: amountAt(row, "totalexpense"),
+      reportedProfit: amountAt(row, "profit"),
+      surgeryAmount,
+      externalLab: amountAt(row, "externallabvendorcost"),
+      implant: amountAt(row, "implantcosthospital"),
+      dci: 0,
+      crossConsultation: 0,
+      referralCommission: 0,
+      externalDiagnostics: amountAt(row, "internallabcost"),
+      anaesthetist: amountAt(row, "anaesthetistpayout"),
+      anaesthesiaHours: 1,
+      assistantSurgeon: amountAt(row, "assistantsurgeonpayout"),
+      consumables: amountAt(row, "consumablerevenue"),
+      specialEquipment: 0,
+      externalVisit: amountAt(row, "visitingconsultantfee"),
+      b2bPartnerPayout: amountAt(row, "b2bpartnerpayout"),
+      bloodProcurement: amountAt(row, "bloodprocurement"),
+      corporateDiscountAdjustment: amountAt(row, "corporatediscountadjustment"),
+      customPayout: amountAt(row, "custompayout") + amountAt(row, "otherpatientexpense"),
+      emiReimbursementCost: amountAt(row, "emifinancecharges"),
+      medicalEquipmentRental: amountAt(row, "medicalequipmentrentalpatient"),
+      outsideLabPayout: amountAt(row, "outsidelabpayout"),
+      referralPayout: amountAt(row, "referralpayout"),
+      surgeonPayout: amountAt(row, "surgeonpayout"),
+      visitingConsultantFee: amountAt(row, "visitingconsultantfee"),
+    };
+    const referrerIsDoctor = Boolean(doctorName && referrerName && comparableName(doctorName) === comparableName(referrerName));
+    const caseType = /insurance|tpa/i.test(textAt(row, "billpaymentstatus")) ? "insurance" : "cash";
+    const leadAttribution = textAt(row, "leadattribution");
+    const partnerType = !leadAttribution
+      ? ""
+      : /doctor|both/i.test(leadAttribution)
+        ? "partner patient and doctor"
+        : "partner patient only";
+    const payouts: ImportedReconciliation[] = [];
+    if (doctorName) payouts.push({ ...shared, payee: doctorName, type: "Doctor", patientSource: referrerIsDoctor ? "doctor patient" : "hospital patient", caseType, partnerType });
+    if (referrerName && !referrerIsDoctor) payouts.push({ ...shared, payee: referrerName, type: "Referral", patientSource: "", caseType, partnerType });
+    if (partnerName) payouts.push({ ...shared, payee: partnerName, type: "Partner", patientSource: "", caseType, partnerType });
+    if (anaesthetistName) payouts.push({ ...shared, payee: anaesthetistName, type: "Anaesthetist", patientSource: "", caseType, partnerType });
+    return payouts;
+  });
+  if (invalid.length) throw new Error(`Fix row${invalid.length > 1 ? "s" : ""} ${invalid.join(", ")}. IPD Number and Total Revenue are required.`);
+  if (!entries.length) throw new Error("No doctor, referral, partner, or anaesthetist names were found.");
+  return entries;
+}
+
 function entriesFromRows(rows: string[][]): ImportedReconciliation[] {
   const [header, ...data] = rows;
   if (!header) throw new Error("The file is empty.");
   const columns = header.map(normaliseHeader);
+  if (columns.includes("ipdnumber")) return hospitalSheetEntries(columns, data);
   const missing = requiredHeaders.filter((name) => !columns.includes(name));
   if (missing.length)
     throw new Error(
@@ -177,11 +284,31 @@ function entriesFromRows(rows: string[][]): ImportedReconciliation[] {
     const referralCommission = optionalAmount("referralcommission");
     const externalDiagnostics = optionalAmount("externaldiagnostics");
     const anaesthetist = optionalAmount("anaesthetist");
+    const anaesthesiaHours = optionalAmount("anaesthesiahours") || optionalAmount("anesthesiahours");
+    const assistantSurgeon = optionalAmount("assistantsurgeon");
     const consumables = optionalAmount("consumables");
     const specialEquipment = optionalAmount("specialequipment");
     const externalVisit = optionalAmount("externalvisit");
+    const b2bPartnerPayout = optionalAmount("b2bpartnerpayout");
+    const bloodProcurement = optionalAmount("bloodprocurement");
+    const corporateDiscountAdjustment = optionalAmount("corporatediscountadjustment");
+    const customPayout = optionalAmount("custompayout");
+    const emiReimbursementCost = optionalAmount("emireimbursementcost");
+    const medicalEquipmentRental = optionalAmount("medicalequipmentrental");
+    const outsideLabPayout = optionalAmount("outsidelabpayout");
+    const referralPayout = optionalAmount("referralpayout");
+    const surgeonPayout = optionalAmount("surgeonpayout");
+    const visitingConsultantFee = optionalAmount("visitingconsultantfee");
     const patientSource = (row[indexOf("patientsource")] || "").trim();
+    const caseType = (row[indexOf("casetype")] || "").trim();
+    const partnerType = (row[indexOf("partnertype")] || "").trim();
     const caseRef = (row[indexOf("casereference")] || "").trim();
+    const surgeryName = (
+      row[indexOf("surgeryname")] ||
+      row[indexOf("surgery")] ||
+      row[indexOf("procedure")] ||
+      ""
+    ).trim();
     const payee = (row[indexOf("payee")] || "").trim();
     if (!caseRef && !payee && !typeValue && !surgeryAmount) return [];
     if (
@@ -192,12 +319,12 @@ function entriesFromRows(rows: string[][]): ImportedReconciliation[] {
       surgeryAmount < 0 ||
       !Number.isFinite(externalLab) ||
       !Number.isFinite(implant) ||
-      [externalLab, implant, dci, crossConsultation, referralCommission, externalDiagnostics, anaesthetist, consumables, specialEquipment, externalVisit].some((amount) => !Number.isFinite(amount) || amount < 0)
+      [externalLab, implant, dci, crossConsultation, referralCommission, externalDiagnostics, anaesthetist, anaesthesiaHours, assistantSurgeon, consumables, specialEquipment, externalVisit, b2bPartnerPayout, bloodProcurement, corporateDiscountAdjustment, customPayout, emiReimbursementCost, medicalEquipmentRental, outsideLabPayout, referralPayout, surgeonPayout, visitingConsultantFee].some((amount) => !Number.isFinite(amount) || amount < 0)
     ) {
       invalid.push(rowIndex + 2);
       return [];
     }
-    return [{ caseRef, payee, type, surgeryAmount, externalLab, implant, patientSource, dci, crossConsultation, referralCommission, externalDiagnostics, anaesthetist, consumables, specialEquipment, externalVisit }];
+    return [{ caseRef, surgeryName, patientName: "", patientPhone: "", uhid: "", hospitalName: "", admissionDate: "", dischargeDate: "", totalExpense: 0, reportedProfit: 0, payee, type, surgeryAmount, externalLab, implant, patientSource, caseType, partnerType, dci, crossConsultation, referralCommission, externalDiagnostics, anaesthetist, anaesthesiaHours, assistantSurgeon, consumables, specialEquipment, externalVisit, b2bPartnerPayout, bloodProcurement, corporateDiscountAdjustment, customPayout, emiReimbursementCost, medicalEquipmentRental, outsideLabPayout, referralPayout, surgeonPayout, visitingConsultantFee }];
   });
   if (invalid.length)
     throw new Error(

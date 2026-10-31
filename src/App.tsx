@@ -16,7 +16,7 @@ import {
 } from "./services/surgeryService";
 import { money, numberValue } from "./lib/money";
 import { supabase } from "./lib/supabase";
-import { getLocalSession, signOutLocally } from "./lib/localAuth";
+import { getLocalSession, localDemoAuthEnabled, signOutLocally } from "./lib/localAuth";
 import { Auth } from "./components/Auth";
 import { SalesPatientEntry } from "./components/SalesPatientEntry";
 import { FinanceDashboard } from "./components/FinanceDashboard";
@@ -148,7 +148,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 export default function App() {
   const [role, setRole] = useState<UserRole | null>(() =>
-    !supabase ? getLocalSession()?.role || null : null,
+    !supabase && localDemoAuthEnabled ? getLocalSession()?.role || null : null,
   );
 
   const [surgeries, setSurgeries] = useState<SurgerySummary[]>([]);

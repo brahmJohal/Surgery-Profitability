@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { UserRole } from "../types";
 import { supabase } from "../lib/supabase";
-import { signInLocally } from "../lib/localAuth";
+import { localDemoAuthEnabled, signInLocally } from "../lib/localAuth";
 
 export function Auth({
   onLocalLogin,
@@ -17,6 +17,10 @@ export function Auth({
   const submit = async () => {
     setMessage("");
     if (!supabase) {
+      if (!localDemoAuthEnabled) {
+        setMessage("Secure sign-in is not configured. Set the Supabase URL and anonymous key before deploying.");
+        return;
+      }
       const session = signInLocally(email, password);
       if (!session) {
         setMessage("Incorrect email or password. Please try again.");
