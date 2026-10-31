@@ -18,12 +18,11 @@
   color: #c6384a !important;
 }
 .auth-logo {
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 14px;
+  width: 132px;
+  height: 123px;
+  margin: 0 auto 8px;
   display: block;
   object-fit: contain;
-  border-radius: 18px;
 }
 .password-wrap {
   position: relative;
