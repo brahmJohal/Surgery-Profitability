@@ -18,9 +18,9 @@
   color: #c6384a !important;
 }
 .auth-logo {
-  width: 132px;
-  height: 123px;
-  margin: 0 auto 8px;
+  width: min(280px, 100%);
+  height: auto;
+  margin: 0 auto 14px;
   display: block;
   object-fit: contain;
 }

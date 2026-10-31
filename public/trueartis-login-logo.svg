@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 744 334" role="img" aria-labelledby="title description">
+  <title id="title">True Artis</title>
+  <description id="description">True Artis — Aesthetics Redefined</description>
+  <rect width="744" height="334" fill="#f8f5ef"/>
+  <g fill="#78583f">
+    <rect x="195" y="75" width="98" height="3" rx="1.5"/>
+    <rect x="464" y="75" width="98" height="3" rx="1.5"/>
+    <text x="372" y="82" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" font-weight="600" letter-spacing="12">TRUE</text>
+    <text x="372" y="185" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="108" font-weight="700" letter-spacing="2">ARTIS</text>
+    <rect x="130" y="205" width="496" height="2" fill="#b5854b"/>
+    <text x="372" y="262" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="600" letter-spacing="10">AESTHETICS REDEFINED</text>
+  </g>
+</svg>

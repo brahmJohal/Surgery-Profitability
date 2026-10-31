@@ -41,7 +41,7 @@ export function Auth({
       <section className="card auth-card">
         <img
           className="auth-logo"
-          src="/trueartis-login-logo.png"
+          src="/trueartis-login-logo.svg"
           alt="TrueArtis"
         />
         <h1>TrueArtis</h1>
