@@ -45,7 +45,6 @@ export function Auth({
           alt="TrueArtis"
         />
         <h1>TrueArtis</h1>
-        <p>Hospital Finance &amp; Reconciliation</p>
 
         <label className="field">
           <span>Email address</span>
