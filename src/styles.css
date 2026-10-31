@@ -718,6 +718,132 @@ textarea {
     flex-direction: column;
   }
 }
+
+/* True Artis visual theme */
+:root {
+  color: #342317;
+  background: #f7f1e9;
+}
+header {
+  background: #2d1b12;
+}
+header small { color: #e7d4bc; }
+header span { background: #5a3824; }
+.card,
+.finance-metric,
+.finance-tabs button,
+.payable-actions button,
+.confirm-modal,
+.payee-modal,
+.upi-modal,
+.case-details-modal,
+.surgery-fee-row {
+  background: #fffdf9;
+  border-color: #e6d8c7;
+}
+.card { box-shadow: 0 2px 10px #41271712; }
+h2,
+.field em,
+.amount b,
+.result small,
+.metric span,
+.queue-entry span,
+.queue-entry small,
+.agreement-row span,
+.agreement-row small,
+.mou-upload small,
+.payee-toggle span,
+.surgery-popout small,
+.history-payment span,
+.vendor-row small,
+.vendor-row > span:last-child,
+.finance-metric span,
+.finance-metric small,
+.payable span,
+.payable small,
+.payable-amount span,
+.term-heading small,
+.term-toggle small,
+.case-patient-grid span,
+.case-profit-grid span,
+.form-help {
+  color: #806f61;
+}
+input,
+select,
+textarea {
+  background: #fffdf9;
+  border-color: #d8c5b1;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #c9a36f;
+  outline-offset: 1px;
+  border-color: #a87845;
+}
+.primary,
+.finance-tabs button.active {
+  background: #8b6039;
+  border-color: #8b6039;
+  color: #fffdf9;
+}
+.primary:hover,
+.finance-tabs button.active:hover {
+  background: #70492c;
+}
+.secondary {
+  background: #fffaf3;
+  color: #76502f;
+  border-color: #d9c3a9;
+}
+.header-button,
+.signout { border-color: #a98158; }
+.source-badge,
+.margin b {
+  background: #f2e4d2;
+  color: #76502f;
+}
+.surgery-fee-section,
+.surgery-popout,
+.agreement-term-panel,
+.case-patient-grid > div,
+.case-profit-grid > div {
+  border-color: #e5d5c3;
+  background: #fdf8f1;
+}
+.deduction-chip {
+  border-color: #d8ba93;
+  background: #f8ead8;
+  color: #76502f;
+}
+.deduction-chip span {
+  background: #ead0ae;
+  color: #76502f;
+}
+.payee-toggle strong,
+.case-reference,
+.vendor-row:hover strong,
+.manage summary {
+  color: #8b6039;
+}
+.finance-hero {
+  background: linear-gradient(135deg, #2d1b12, #7b512f);
+}
+.finance-hero p:not(.eyebrow),
+.finance-import small { color: #edddc9; }
+.eyebrow { color: #e5bf88; }
+.finance-tabs button { color: #6d5745; border-color: #dfcfbd; }
+.payment-status.approved {
+  background: #f3e3ce;
+  color: #79502d;
+}
+.term-toggle input { accent-color: #8b6039; }
+.modal-backdrop { background: #26160dcc; }
+.confirm-modal p,
+.upi-modal p,
+.upi-modal small,
+.modal-close { color: #665144; }
 .finance-hero {
   display: flex;
   justify-content: space-between;
@@ -937,3 +1063,42 @@ textarea {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Keep Finance-specific colours after the Finance layout rules. */
+.finance-hero {
+  background: linear-gradient(135deg, #2d1b12, #7b512f);
+}
+.finance-hero p:not(.eyebrow),
+.finance-import small { color: #edddc9; }
+.eyebrow { color: #e5bf88; }
+.finance-tabs button {
+  background: #fffdf9;
+  border-color: #dfcfbd;
+  color: #6d5745;
+}
+.finance-tabs button.active {
+  background: #8b6039;
+  border-color: #8b6039;
+  color: #fffdf9;
+}
+.finance-metric,
+.payable-actions button,
+.agreement-term-panel {
+  background: #fffdf9;
+  border-color: #e6d8c7;
+}
+.finance-metric span,
+.finance-metric small,
+.payable span,
+.payable small,
+.payable-amount span,
+.term-heading small,
+.term-toggle small {
+  color: #806f61;
+}
+.payable { border-bottom-color: #eadfd2; }
+.payment-status.approved {
+  background: #f3e3ce;
+  color: #79502d;
+}
+.term-toggle input { accent-color: #8b6039; }
