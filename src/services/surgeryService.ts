@@ -17,19 +17,30 @@ const localFixedCost = (surgery: Surgery) =>
   surgery.base_rental +
   surgery.other_fixed_cost;
 
+const cacheTtlMs = 60_000;
+const surgeryCache = new Map<UserRole, { expiresAt: number; value: SurgerySummary[] }>();
+let referralCache: { expiresAt: number; value: number } | null = null;
+
 export async function getSurgeries(role: UserRole): Promise<SurgerySummary[]> {
   if (!supabase) return localSurgeries();
+  const cached = surgeryCache.get(role);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
   const operation =
     role === "admin" ? "admin_list_surgeries" : "get_calculator_surgeries";
   const { data, error } = await supabase.rpc(operation);
   if (error) throw error;
-  return data as SurgerySummary[];
+  const value = data as SurgerySummary[];
+  surgeryCache.set(role, { value, expiresAt: Date.now() + cacheTtlMs });
+  return value;
 }
 export async function getOnlineSalesFixedReferral(): Promise<number> {
   if (!supabase) return 15000;
+  if (referralCache && referralCache.expiresAt > Date.now()) return referralCache.value;
   const { data, error } = await supabase.rpc("get_online_sales_fixed_referral");
   if (error) throw error;
-  return Number(data || 15000);
+  const value = Number(data || 15000);
+  referralCache = { value, expiresAt: Date.now() + cacheTtlMs };
+  return value;
 }
 export async function saveOnlineSalesFixedReferral(amount: number) {
   if (!supabase) return;
@@ -40,6 +51,7 @@ export async function saveOnlineSalesFixedReferral(amount: number) {
     },
   );
   if (error) throw error;
+  referralCache = { value: amount, expiresAt: Date.now() + cacheTtlMs };
 }
 export async function calculateProfit(
   surgeryId: string,
@@ -112,6 +124,7 @@ export async function saveSurgery(surgery: Partial<Surgery>) {
       p_active: surgery.active,
     });
     if (error) throw error;
+    surgeryCache.clear();
     return;
   }
   const { error } = await supabase.rpc("add_surgery", {
@@ -124,4 +137,5 @@ export async function saveSurgery(surgery: Partial<Surgery>) {
     p_other_fixed_cost: surgery.other_fixed_cost,
   });
   if (error) throw error;
+  surgeryCache.clear();
 }

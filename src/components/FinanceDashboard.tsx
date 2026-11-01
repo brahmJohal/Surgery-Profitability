@@ -288,6 +288,7 @@ const formatDateTime = (value?: string) => {
   }).format(date);
 };
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const PAYEE_PAGE_SIZE = 25;
 const allowedMouFileTypes = new Set([
   "application/pdf",
   "image/jpeg",
@@ -303,6 +304,7 @@ export function FinanceDashboard() {
   const [message, setMessage] = useState("");
   const [importing, setImporting] = useState(false);
   const [expandedPayees, setExpandedPayees] = useState<string[]>([]);
+  const [queuePage, setQueuePage] = useState(1);
   const [payeeProfiles, setPayeeProfiles] =
     useState<PayeeProfile[]>(savedPayeeProfiles);
   const [payeeForm, setPayeeForm] = useState<PayeeProfile>(emptyPayeeProfile);
@@ -558,6 +560,14 @@ export function FinanceDashboard() {
       }),
     [payableGroups],
   );
+  const queuePageCount = Math.max(1, Math.ceil(unpaidPayableGroups.length / PAYEE_PAGE_SIZE));
+  const paginatedUnpaidPayableGroups = useMemo(
+    () => unpaidPayableGroups.slice((queuePage - 1) * PAYEE_PAGE_SIZE, queuePage * PAYEE_PAGE_SIZE),
+    [queuePage, unpaidPayableGroups],
+  );
+  useEffect(() => {
+    setQueuePage((current) => Math.min(current, queuePageCount));
+  }, [queuePageCount]);
   const vendorDirectory = useMemo(() => {
     const imported = payableGroups.map((group) => ({
       name: group.payee,
@@ -1230,7 +1240,7 @@ export function FinanceDashboard() {
           </div>
           <div className="payable-list">
             {unpaidPayableGroups.length ? (
-              unpaidPayableGroups.map((group) => (
+              paginatedUnpaidPayableGroups.map((group) => (
                 <article className="payable payable-group" key={group.key}>
                   <div>
                     <button
@@ -1304,6 +1314,25 @@ export function FinanceDashboard() {
               </p>
             )}
           </div>
+          {unpaidPayableGroups.length > PAYEE_PAGE_SIZE && (
+            <nav className="queue-pagination" aria-label="Payment queue pages">
+              <button
+                className="secondary"
+                disabled={queuePage === 1}
+                onClick={() => setQueuePage((page) => page - 1)}
+              >
+                Previous
+              </button>
+              <span>Page {queuePage} of {queuePageCount}</span>
+              <button
+                className="secondary"
+                disabled={queuePage === queuePageCount}
+                onClick={() => setQueuePage((page) => page + 1)}
+              >
+                Next
+              </button>
+            </nav>
+          )}
         </section>
       )}
 

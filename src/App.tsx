@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type {
   Calculation,
   ProfitResult,
@@ -18,8 +18,17 @@ import { money, numberValue } from "./lib/money";
 import { supabase } from "./lib/supabase";
 import { getLocalSession, localDemoAuthEnabled, signOutLocally } from "./lib/localAuth";
 import { Auth } from "./components/Auth";
-import { SalesPatientEntry } from "./components/SalesPatientEntry";
-import { FinanceDashboard } from "./components/FinanceDashboard";
+
+const FinanceDashboard = lazy(() =>
+  import("./components/FinanceDashboard").then((module) => ({
+    default: module.FinanceDashboard,
+  })),
+);
+const SalesPatientEntry = lazy(() =>
+  import("./components/SalesPatientEntry").then((module) => ({
+    default: module.SalesPatientEntry,
+  })),
+);
 
 const empty: Calculation = {
   billing: 0,
@@ -146,6 +155,16 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function WorkspaceSkeleton() {
+  return (
+    <main className="workspace-skeleton" aria-label="Loading workspace">
+      <span />
+      <span />
+      <span />
+    </main>
+  );
+}
+
 export default function App() {
   const [role, setRole] = useState<UserRole | null>(() =>
     !supabase && localDemoAuthEnabled ? getLocalSession()?.role || null : null,
@@ -157,6 +176,7 @@ export default function App() {
   const [result, setResult] = useState<ProfitResult>(emptyResult);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const calculationTimer = useRef<number | undefined>(undefined);
 
   const [newName, setNewName] = useState("");
   const [newCosts, setNewCosts] = useState<CostFields>(blankCosts);
@@ -270,17 +290,19 @@ export default function App() {
     }
 
     let stale = false;
-
-    calculateProfit(surgery.id, values)
-      .then((next) => {
-        if (!stale) setResult(next);
-      })
-      .catch(() => {
-        if (!stale) setStatus("Unable to calculate profit right now.");
-      });
+    calculationTimer.current = window.setTimeout(() => {
+      void calculateProfit(surgery.id, values)
+        .then((next) => {
+          if (!stale) setResult(next);
+        })
+        .catch(() => {
+          if (!stale) setStatus("Unable to calculate profit right now.");
+        });
+    }, 250);
 
     return () => {
       stale = true;
+      if (calculationTimer.current) window.clearTimeout(calculationTimer.current);
     };
   }, [
     surgery?.id,
@@ -467,9 +489,13 @@ export default function App() {
       </header>
 
       {isFinance ? (
-        <FinanceDashboard />
+        <Suspense fallback={<WorkspaceSkeleton />}>
+          <FinanceDashboard />
+        </Suspense>
       ) : isSales && salesView === "patient-queue" ? (
-        <SalesPatientEntry role={role} />
+        <Suspense fallback={<WorkspaceSkeleton />}>
+          <SalesPatientEntry role={role} />
+        </Suspense>
       ) : (
         <main>
           <p className="notice">

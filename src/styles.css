@@ -930,6 +930,35 @@ textarea:focus {
   gap: 10px;
   flex-wrap: wrap;
 }
+.queue-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  color: #806f61;
+  font-size: 13px;
+}
+.queue-pagination .secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.workspace-skeleton {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+.workspace-skeleton span {
+  display: block;
+  height: 112px;
+  border-radius: 14px;
+  background: linear-gradient(100deg, #efe4d7 25%, #fbf6ef 45%, #efe4d7 65%);
+  background-size: 200% 100%;
+  animation: workspace-loading 1.25s ease-in-out infinite;
+}
+@keyframes workspace-loading {
+  to { background-position: -200% 0; }
+}
 .checklist {
   display: grid;
   gap: 12px;
