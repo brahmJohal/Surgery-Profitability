@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import QRCode from "qrcode";
 import { importReconciliationFile } from "../lib/excelImport";
 import { loadFinanceWorkspace, replaceFinanceWorkspaceCollection } from "../services/financeWorkspaceService";
 import { supabase } from "../lib/supabase";
@@ -644,6 +643,7 @@ export function FinanceDashboard() {
       tn: `Hospital payout - ${group.payee}`,
     });
     const upiLink = `upi://pay?${parameters.toString()}`;
+    const { default: QRCode } = await import("qrcode");
     const qrImage = await QRCode.toDataURL(upiLink, {
       width: 320,
       margin: 2,

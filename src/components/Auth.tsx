@@ -43,6 +43,8 @@ export function Auth({
           className="auth-logo"
           src="/trueartis-login-logo.svg"
           alt="TrueArtis"
+          width="744"
+          height="334"
         />
         <h1>TrueArtis</h1>
 
