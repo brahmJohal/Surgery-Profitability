@@ -29,6 +29,11 @@ const SalesPatientEntry = lazy(() =>
     default: module.SalesPatientEntry,
   })),
 );
+const UserManagement = lazy(() =>
+  import("./components/UserManagement").then((module) => ({
+    default: module.UserManagement,
+  })),
+);
 
 const empty: Calculation = {
   billing: 0,
@@ -191,6 +196,7 @@ export default function App() {
   const [salesView, setSalesView] = useState<"calculator" | "patient-queue">(
     "calculator",
   );
+  const [adminView, setAdminView] = useState<"calculator" | "users">("calculator");
 
   const isAdmin = role === "admin";
   const isOnlineSales = role === "online_sales";
@@ -451,7 +457,7 @@ export default function App() {
           <strong>True Hospitals</strong>
           <small>
             {isAdmin
-              ? "Admin dashboard"
+              ? adminView === "users" ? "User management" : "Admin dashboard"
               : isFinance
                 ? "Finance reconciliation"
                 : salesView === "patient-queue"
@@ -482,13 +488,25 @@ export default function App() {
                 : "Add patient"}
             </button>
           )}
+          {isAdmin && (
+            <button
+              className="header-button"
+              onClick={() => setAdminView((current) => current === "users" ? "calculator" : "users")}
+            >
+              {adminView === "users" ? "Calculator" : "User management"}
+            </button>
+          )}
           <button className="signout" onClick={signOut}>
             Sign out
           </button>
         </div>
       </header>
 
-      {isFinance ? (
+      {isAdmin && adminView === "users" ? (
+        <Suspense fallback={<WorkspaceSkeleton />}>
+          <UserManagement />
+        </Suspense>
+      ) : isFinance ? (
         <Suspense fallback={<WorkspaceSkeleton />}>
           <FinanceDashboard />
         </Suspense>

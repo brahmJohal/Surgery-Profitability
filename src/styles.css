@@ -943,6 +943,28 @@ textarea:focus {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.user-list {
+  display: grid;
+  border-top: 1px solid #eadfd2;
+  margin-top: 16px;
+}
+.user-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 0;
+  border-bottom: 1px solid #eadfd2;
+}
+.user-row strong,
+.user-row span,
+.user-row small { display: block; }
+.user-row span,
+.user-row small { color: #806f61; font-size: 13px; margin-top: 3px; }
+.user-role-field { width: 190px; margin: 0; }
+.user-role-field > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+.user-list-skeleton { display: grid; gap: 10px; margin-top: 16px; }
+.user-list-skeleton span { height: 66px; border-radius: 10px; background: #f1e6da; }
 .workspace-skeleton {
   display: grid;
   gap: 16px;
@@ -1091,6 +1113,8 @@ textarea:focus {
   .case-profit-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .user-row { align-items: stretch; flex-direction: column; }
+  .user-role-field { width: 100%; }
 }
 
 /* Keep Finance-specific colours after the Finance layout rules. */
