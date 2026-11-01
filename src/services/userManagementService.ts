@@ -28,6 +28,26 @@ const normalizeRole = (value: string): UserRole =>
     ? (value as UserRole)
     : "offline_sales";
 
+async function invokeAdminUserService(body: Record<string, unknown>) {
+  if (!supabase) throw new Error("Supabase is not connected.");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Your session has expired. Please sign in again.");
+
+  const { data, error } = await supabase.functions.invoke("admin-user-management", {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (error) {
+    const response = (error as { context?: Response }).context;
+    const details = response
+      ? await response.clone().json().catch(() => null) as { error?: string } | null
+      : null;
+    throw new Error(details?.error || error.message);
+  }
+  return data;
+}
+
 export async function getManagedUsers(): Promise<ManagedUser[]> {
   if (!supabase) return [];
   const { data, error } = await supabase.rpc("admin_list_users");
@@ -49,18 +69,10 @@ export async function getManagedUsers(): Promise<ManagedUser[]> {
 }
 
 export async function updateManagedUserRole(id: string, role: UserRole) {
-  if (!supabase) throw new Error("Supabase is not connected.");
-  const { error } = await supabase.functions.invoke("admin-user-management", {
-    body: { action: "update-role", userId: id, role },
-  });
-  if (error) throw error;
+  await invokeAdminUserService({ action: "update-role", userId: id, role });
 }
 
 export async function createManagedUser(user: NewManagedUser) {
-  if (!supabase) throw new Error("Supabase is not connected.");
-  const { data, error } = await supabase.functions.invoke("admin-user-management", {
-    body: { action: "create-user", ...user },
-  });
-  if (error) throw error;
+  const data = await invokeAdminUserService({ action: "create-user", ...user });
   return data as { id: string };
 }
