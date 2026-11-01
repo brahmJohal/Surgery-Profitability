@@ -971,6 +971,21 @@ textarea:focus {
 }
 .add-user-form h2 { margin: 0; font-size: 19px; }
 .add-user-form .form-grid { margin: 16px 0; }
+.app-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 15px 18px;
+  border: 1px solid #b6d9c5;
+  border-radius: 12px;
+  background: #effbf3;
+  box-shadow: 0 14px 34px rgba(60, 43, 30, .18);
+  color: #087d55;
+  font-weight: 700;
+}
+.app-toast.error { border-color: #e8bea9; background: #fff3ed; color: #a3431e; }
 .user-list-skeleton { display: grid; gap: 10px; margin-top: 16px; }
 .user-list-skeleton span { height: 66px; border-radius: 10px; background: #f1e6da; }
 .workspace-skeleton {

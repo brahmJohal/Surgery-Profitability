@@ -34,7 +34,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
-  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({
     fullName: "",
@@ -45,11 +45,11 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
 
   const load = async () => {
     setLoading(true);
-    setMessage("");
+    setNotice(null);
     try {
       setUsers(await getManagedUsers());
     } catch (error) {
-      setMessage(userError(error, "Could not load users. Please refresh and try again."));
+      setNotice({ text: userError(error, "Could not load users. Please refresh and try again."), type: "error" });
     } finally {
       setLoading(false);
     }
@@ -59,17 +59,23 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
     void load();
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const updateRole = async (user: ManagedUser, role: UserRole) => {
     setSavingId(user.id);
-    setMessage("");
+    setNotice(null);
     try {
       await updateManagedUserRole(user.id, role);
       setUsers((current) =>
         current.map((item) => (item.id === user.id ? { ...item, role } : item)),
       );
-      setMessage(`${user.fullName}'s role was updated.`);
+      setNotice({ text: `${user.fullName}'s role was updated.`, type: "success" });
     } catch (error) {
-      setMessage(userError(error, "Could not update this user's role."));
+      setNotice({ text: userError(error, "Could not update this user's role."), type: "error" });
     } finally {
       setSavingId("");
     }
@@ -78,14 +84,14 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
   const addUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setCreating(true);
-    setMessage("");
+    setNotice(null);
     try {
       await createManagedUser(newUser);
       setNewUser({ fullName: "", email: "", password: "", role: "offline_sales" });
       await load();
-      setMessage("New staff account created. They can sign in with the password you set.");
+      setNotice({ text: "New staff account created. They can sign in with the password you set.", type: "success" });
     } catch (error) {
-      setMessage(userError(error, "Could not create this staff account."));
+      setNotice({ text: userError(error, "Could not create this staff account."), type: "error" });
     } finally {
       setCreating(false);
     }
@@ -164,7 +170,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
           </div>
           <button disabled={creating}>{creating ? "Creating user…" : "Add user"}</button>
         </form>
-        {message && <p className="status">{message}</p>}
+        {notice && <div className={`app-toast ${notice.type}`} role="status">{notice.text}</div>}
       </section>
     </main>
   );

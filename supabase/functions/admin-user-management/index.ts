@@ -43,12 +43,10 @@ Deno.serve(async (request) => {
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: callerProfile, error: roleError } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", userData.user.id)
-    .single();
-  if (roleError || callerProfile?.role !== "admin") {
+  const { data: callerRole, error: roleError } = await admin.rpc("server_user_role", {
+    p_user_id: userData.user.id,
+  });
+  if (roleError || callerRole !== "admin") {
     return respond(request, 403, { error: "Administrator access is required." });
   }
 
@@ -68,7 +66,10 @@ Deno.serve(async (request) => {
     if (userId === userData.user.id && role !== "admin") {
       return respond(request, 400, { error: "Your own Administrator role is protected." });
     }
-    const { error } = await admin.from("profiles").update({ role }).eq("id", userId);
+    const { error } = await admin.rpc("server_update_user_role", {
+      p_user_id: userId,
+      p_role: role,
+    });
     if (error) return respond(request, 400, { error: error.message });
     return respond(request, 200, { ok: true });
   }
@@ -88,10 +89,10 @@ Deno.serve(async (request) => {
     });
     if (error || !data.user) return respond(request, 400, { error: error?.message || "Could not create the account." });
 
-    const { error: profileError } = await admin.from("profiles").upsert({
-      id: data.user.id,
-      full_name: fullName || email,
-      role,
+    const { error: profileError } = await admin.rpc("server_save_user_profile", {
+      p_user_id: data.user.id,
+      p_full_name: fullName || email,
+      p_role: role,
     });
     if (profileError) return respond(request, 400, { error: profileError.message });
     return respond(request, 201, { id: data.user.id });
