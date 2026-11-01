@@ -963,6 +963,14 @@ textarea:focus {
 .user-row small { color: #806f61; font-size: 13px; margin-top: 3px; }
 .user-role-field { width: 190px; margin: 0; }
 .user-role-field > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+.user-role-field small { color: #806f61; font-size: 11px; margin-top: 5px; }
+.add-user-form {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #eadfd2;
+}
+.add-user-form h2 { margin: 0; font-size: 19px; }
+.add-user-form .form-grid { margin: 16px 0; }
 .user-list-skeleton { display: grid; gap: 10px; margin-top: 16px; }
 .user-list-skeleton span { height: 66px; border-radius: 10px; background: #f1e6da; }
 .workspace-skeleton {

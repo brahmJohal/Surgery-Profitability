@@ -9,6 +9,25 @@ export type ManagedUser = {
   createdAt: string;
 };
 
+export type NewManagedUser = {
+  fullName: string;
+  email: string;
+  password: string;
+  role: UserRole;
+};
+
+const supportedRoles: UserRole[] = [
+  "admin",
+  "finance",
+  "offline_sales",
+  "online_sales",
+];
+
+const normalizeRole = (value: string): UserRole =>
+  supportedRoles.includes(value as UserRole)
+    ? (value as UserRole)
+    : "offline_sales";
+
 export async function getManagedUsers(): Promise<ManagedUser[]> {
   if (!supabase) return [];
   const { data, error } = await supabase.rpc("admin_list_users");
@@ -24,16 +43,24 @@ export async function getManagedUsers(): Promise<ManagedUser[]> {
     id: String(user.id),
     fullName: String(user.full_name || "Unnamed user"),
     email: String(user.email || ""),
-    role: user.role as UserRole,
+    role: normalizeRole(String(user.role)),
     createdAt: String(user.created_at || ""),
   }));
 }
 
 export async function updateManagedUserRole(id: string, role: UserRole) {
-  if (!supabase) return;
-  const { error } = await supabase.rpc("admin_update_user_role", {
-    p_user_id: id,
-    p_role: role,
+  if (!supabase) throw new Error("Supabase is not connected.");
+  const { error } = await supabase.functions.invoke("admin-user-management", {
+    body: { action: "update-role", userId: id, role },
   });
   if (error) throw error;
+}
+
+export async function createManagedUser(user: NewManagedUser) {
+  if (!supabase) throw new Error("Supabase is not connected.");
+  const { data, error } = await supabase.functions.invoke("admin-user-management", {
+    body: { action: "create-user", ...user },
+  });
+  if (error) throw error;
+  return data as { id: string };
 }

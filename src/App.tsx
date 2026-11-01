@@ -174,6 +174,7 @@ export default function App() {
   const [role, setRole] = useState<UserRole | null>(() =>
     !supabase && localDemoAuthEnabled ? getLocalSession()?.role || null : null,
   );
+  const [currentUserId, setCurrentUserId] = useState("");
 
   const [surgeries, setSurgeries] = useState<SurgerySummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -221,6 +222,7 @@ export default function App() {
     if (!supabase) return;
 
     const applySession = async (session: { user: { id: string } } | null) => {
+      setCurrentUserId(session?.user.id || "");
       setRole(session ? await roleFromSession(session.user.id) : null);
     };
 
@@ -504,7 +506,7 @@ export default function App() {
 
       {isAdmin && adminView === "users" ? (
         <Suspense fallback={<WorkspaceSkeleton />}>
-          <UserManagement />
+          <UserManagement currentUserId={currentUserId} />
         </Suspense>
       ) : isFinance ? (
         <Suspense fallback={<WorkspaceSkeleton />}>

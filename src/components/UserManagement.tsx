@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type { UserRole } from "../types";
 import {
   getManagedUsers,
+  createManagedUser,
   type ManagedUser,
   updateManagedUserRole,
 } from "../services/userManagementService";
@@ -23,19 +24,32 @@ const dateLabel = (value: string) =>
       }).format(new Date(value))
     : "—";
 
-export function UserManagement() {
+const userError = (error: unknown, fallback: string) =>
+  error && typeof error === "object" && "message" in error &&
+  typeof error.message === "string"
+    ? error.message
+    : fallback;
+
+export function UserManagement({ currentUserId }: { currentUserId: string }) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
   const [message, setMessage] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newUser, setNewUser] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    role: "offline_sales" as UserRole,
+  });
 
   const load = async () => {
     setLoading(true);
     setMessage("");
     try {
       setUsers(await getManagedUsers());
-    } catch {
-      setMessage("Could not load users. Run migration 009 in Supabase, then refresh.");
+    } catch (error) {
+      setMessage(userError(error, "Could not load users. Please refresh and try again."));
     } finally {
       setLoading(false);
     }
@@ -55,9 +69,25 @@ export function UserManagement() {
       );
       setMessage(`${user.fullName}'s role was updated.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update this user's role.");
+      setMessage(userError(error, "Could not update this user's role."));
     } finally {
       setSavingId("");
+    }
+  };
+
+  const addUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreating(true);
+    setMessage("");
+    try {
+      await createManagedUser(newUser);
+      setNewUser({ fullName: "", email: "", password: "", role: "offline_sales" });
+      await load();
+      setMessage("New staff account created. They can sign in with the password you set.");
+    } catch (error) {
+      setMessage(userError(error, "Could not create this staff account."));
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -68,7 +98,7 @@ export function UserManagement() {
           <div>
             <h1>User management</h1>
             <p className="form-help">
-              Assign access roles for staff who already have a Supabase sign-in.
+              Administrator-only access. Create staff sign-ins and control their access roles here.
             </p>
           </div>
           <button className="secondary" onClick={() => void load()} disabled={loading}>
@@ -95,11 +125,12 @@ export function UserManagement() {
                   <span>Access role</span>
                   <select
                     value={user.role}
-                    disabled={savingId === user.id}
+                    disabled={savingId === user.id || user.id === currentUserId}
                     onChange={(event) => void updateRole(user, event.target.value as UserRole)}
                   >
                     {roles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
                   </select>
+                  {user.id === currentUserId && <small>Your administrator role is protected.</small>}
                 </label>
               </article>
             ))}
@@ -107,6 +138,32 @@ export function UserManagement() {
         ) : (
           <p className="form-help">No Supabase users yet. Create the staff account in Supabase Authentication, then return here to set its role.</p>
         )}
+
+        <form className="add-user-form" onSubmit={(event) => void addUser(event)}>
+          <h2>Add new user</h2>
+          <p className="form-help">Create a sign-in now. Share the password privately with the staff member.</p>
+          <div className="form-grid">
+            <label className="field">
+              <span>Full name</span>
+              <input required value={newUser.fullName} onChange={(event) => setNewUser((value) => ({ ...value, fullName: event.target.value }))} placeholder="e.g. Riya Sharma" />
+            </label>
+            <label className="field">
+              <span>Email address</span>
+              <input required type="email" value={newUser.email} onChange={(event) => setNewUser((value) => ({ ...value, email: event.target.value }))} placeholder="staff@truehospitals.com" />
+            </label>
+            <label className="field">
+              <span>Temporary password</span>
+              <input required type="password" minLength={8} value={newUser.password} onChange={(event) => setNewUser((value) => ({ ...value, password: event.target.value }))} placeholder="Minimum 8 characters" />
+            </label>
+            <label className="field">
+              <span>Access role</span>
+              <select value={newUser.role} onChange={(event) => setNewUser((value) => ({ ...value, role: event.target.value as UserRole }))}>
+                {roles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <button disabled={creating}>{creating ? "Creating user…" : "Add user"}</button>
+        </form>
         {message && <p className="status">{message}</p>}
       </section>
     </main>
