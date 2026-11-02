@@ -671,6 +671,24 @@ textarea {
   padding: 10px 0;
   border-bottom: 1px solid #e5eaf1;
 }
+.case-profit-grid .final-profit {
+  border-color: #b9d9c2;
+  background: #eff9f1;
+}
+.case-profit-grid .final-profit strong,
+.surgery-popout .case-profit {
+  color: #197447;
+}
+.case-profit-grid .final-profit.loss,
+.surgery-popout .case-profit.loss {
+  border-color: #e6c1b4;
+  color: #a4432a;
+}
+.surgery-popout .case-profit {
+  display: block;
+  margin-top: 5px;
+  font-weight: 700;
+}
 .modal-close {
   border: 0;
   background: transparent;

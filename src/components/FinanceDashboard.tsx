@@ -1108,10 +1108,26 @@ export function FinanceDashboard() {
     0,
   );
   const selectedCaseRevenue = caseDetails?.totalRevenue || 0;
+  const selectedCaseExpense = caseDetails?.totalExpense || 0;
   const selectedCaseProfit = caseDetails?.reportedProfit ?? 0;
   const selectedCaseMargin = selectedCaseRevenue > 0
     ? (selectedCaseProfit / selectedCaseRevenue) * 100
     : 0;
+  const selectedCaseProfitAfterPayouts =
+    selectedCaseRevenue - selectedCaseExpense - selectedCasePayoutTotal;
+  const selectedCaseFinalMargin = selectedCaseRevenue > 0
+    ? (selectedCaseProfitAfterPayouts / selectedCaseRevenue) * 100
+    : 0;
+  const profitAfterExpensesAndPayouts = (item: Payable) => {
+    const totalPayoutsForCase = payables
+      .filter((payable) => payable.caseRef === item.caseRef)
+      .reduce((sum, payable) => sum + payable.gross - payable.tds, 0);
+    const amount = (item.totalRevenue || 0) - (item.totalExpense || 0) - totalPayoutsForCase;
+    const percentage = item.totalRevenue
+      ? (amount / item.totalRevenue) * 100
+      : 0;
+    return { amount, percentage };
+  };
 
   return (
     <main>
@@ -1267,6 +1283,7 @@ export function FinanceDashboard() {
                             <small>
                               {item.ruleSource === "basic" ? "Basic rule: " : "MOU: "}{item.percentage ?? 20}% of {money(item.eligibleRevenue ?? 0)} eligible revenue · {item.status}
                             </small>
+                            {item.totalRevenue ? <small className={profitAfterExpensesAndPayouts(item).amount < 0 ? "case-profit loss" : "case-profit"}>Final profit: {money(profitAfterExpensesAndPayouts(item).amount)} ({profitAfterExpensesAndPayouts(item).percentage.toFixed(1)}%)</small> : null}
                           </div>
                         ))}
                       </div>
@@ -1774,10 +1791,10 @@ export function FinanceDashboard() {
             <p className="eyebrow">IPD case</p>
             <h1>{caseDetails.caseRef}</h1>
             {caseDetails.patientName ? <div className="case-patient-grid"><div><span>Patient</span><strong>{caseDetails.patientName}</strong></div><div><span>Phone</span><strong>{caseDetails.patientPhone || "Not provided"}</strong></div><div><span>UHID</span><strong>{caseDetails.uhid || "Not provided"}</strong></div><div><span>Hospital</span><strong>{caseDetails.hospitalName || "Not provided"}</strong></div><div><span>Admission</span><strong>{formatDateTime(caseDetails.admissionDate)}</strong></div><div><span>Discharge</span><strong>{formatDateTime(caseDetails.dischargeDate)}</strong></div></div> : <p className="form-help">Patient information was not included in this older import. Re-import the hospital CSV to see patient details.</p>}
-            <div className="case-profit-grid"><div><span>Total revenue</span><strong>{money(selectedCaseRevenue)}</strong></div><div><span>Total expense</span><strong>{money(caseDetails.totalExpense || 0)}</strong></div><div><span>Excel profit</span><strong>{money(selectedCaseProfit)}</strong></div><div><span>Profit margin</span><strong>{selectedCaseMargin.toFixed(1)}%</strong></div></div>
+            <div className="case-profit-grid"><div><span>Total revenue</span><strong>{money(selectedCaseRevenue)}</strong></div><div><span>All Excel expenses</span><strong>{money(selectedCaseExpense)}</strong></div><div><span>Excel reported profit</span><strong>{money(selectedCaseProfit)}</strong></div><div><span>Excel profit margin</span><strong>{selectedCaseMargin.toFixed(1)}%</strong></div><div className={selectedCaseProfitAfterPayouts < 0 ? "final-profit loss" : "final-profit"}><span>Final profit after all expenses & payouts</span><strong>{money(selectedCaseProfitAfterPayouts)}</strong></div><div className={selectedCaseFinalMargin < 0 ? "final-profit loss" : "final-profit"}><span>Final profit percentage</span><strong>{selectedCaseFinalMargin.toFixed(1)}%</strong></div></div>
             <h2>Current payouts for this IPD</h2>
             <div className="case-payout-list">{selectedCasePayables.map((item) => <div key={item.id}><span>{item.payee} · {item.type}</span><strong>{money(item.gross - item.tds)}</strong></div>)}</div>
-            <p className="form-help">Total queued payout: <strong>{money(selectedCasePayoutTotal)}</strong>. Profit and profit margin are taken from the uploaded Excel’s Profit and Total Revenue columns.</p>
+            <p className="form-help">Total current payout: <strong>{money(selectedCasePayoutTotal)}</strong>. Final profit = Total Revenue − All Excel Expenses − Current Payouts.</p>
           </section>
         </div>
       )}
