@@ -31,6 +31,7 @@ export type MouPdfInput = {
     referralInsurance: MouPdfShare;
     partnerPatientAndDoctor: MouPdfShare;
     partnerPatientOnly: MouPdfShare;
+    defaultPartnerTerms: "partner_patient_and_doctor" | "partner_patient_only";
     assistantSurgeon: MouPdfShare;
     anaesthetistEnabled: boolean;
     anaesthesiaFirstHourRate: number;
@@ -130,7 +131,11 @@ export function downloadMouPdf(input: MouPdfInput) {
       shareSentence("Insurance / TPA case referral", terms?.referralInsurance),
     ].filter(Boolean) });
   } else if (role === "partner") {
+    const defaultTermsLabel = terms?.defaultPartnerTerms === "partner_patient_and_doctor"
+      ? "Partner patient + partner doctor"
+      : "Partner patient only";
     clauses.push({ heading: "2. PARTNER REVENUE SHARING TERMS", content: [
+      `Default partner terms: ${defaultTermsLabel}. This rule is used when the uploaded case has a matching partner name but no clear partner attribution.`,
       shareSentence("Partner patient and partner doctor", terms?.partnerPatientAndDoctor),
       shareSentence("Partner patient only", terms?.partnerPatientOnly),
       "For a partner patient and partner doctor case, no separate doctor payout shall be raised for the same case unless expressly approved in writing.",
