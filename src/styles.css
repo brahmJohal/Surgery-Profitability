@@ -317,22 +317,6 @@ textarea {
   color: #69758a;
   font-size: 12px;
 }
-.agreement-roles {
-  display: grid;
-  gap: 9px;
-  margin-top: 10px;
-}
-.agreement-role {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0 0;
-  border-top: 1px solid #edf0f4;
-}
-.agreement-role .secondary {
-  flex: 0 0 auto;
-}
 .mou-upload {
   display: grid;
   align-content: start;
@@ -748,10 +732,6 @@ textarea {
     margin-top: 8px;
   }
   .agreement-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .agreement-role {
     align-items: flex-start;
     flex-direction: column;
   }

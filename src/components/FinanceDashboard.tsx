@@ -319,16 +319,6 @@ export function FinanceDashboard() {
   const [caseDetails, setCaseDetails] = useState<Payable | null>(null);
   const mouInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const agreementGroups = useMemo(() => {
-    const byPayee = new Map<string, { name: string; rules: ReconciliationRule[] }>();
-    rules.forEach((rule) => {
-      const key = rule.payee.trim().toLowerCase();
-      const group = byPayee.get(key) || { name: rule.payee.trim(), rules: [] };
-      group.rules.push(rule);
-      byPayee.set(key, group);
-    });
-    return [...byPayee.values()];
-  }, [rules]);
   useEffect(() => {
     if (!message) return;
     const timer = window.setTimeout(() => setMessage(""), 5000);
@@ -374,32 +364,6 @@ export function FinanceDashboard() {
         if (active) setMessage("Could not load protected Finance data. Confirm that migration 007 has been run in Supabase.");
       });
     return () => { active = false; };
-  }, []);
-  useEffect(() => {
-    if (!supabase) return;
-    let active = true;
-    const refreshFromServer = () => {
-      void loadFinanceWorkspace(true)
-        .then((workspace) => {
-          if (!active || !workspace) return;
-          setRules(workspace.rules as ReconciliationRule[]);
-          setPayeeProfiles(workspace.profiles as PayeeProfile[]);
-          setPayables(workspace.payables as Payable[]);
-        })
-        // The initial load already shows a useful error if Supabase is unavailable.
-        // Background refreshes fail silently so a temporary network issue does not interrupt work.
-        .catch(() => undefined);
-    };
-    const interval = window.setInterval(refreshFromServer, 10_000);
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") refreshFromServer();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
   }, []);
   const savePayables = (next: Payable[]) => {
     setPayables(next);
@@ -815,24 +779,6 @@ export function FinanceDashboard() {
     );
     setRuleModalOpen(true);
   };
-  const openAdditionalPayoutRole = (payee: string, existingRules: ReconciliationRule[]) => {
-    const roles = ["Doctor", "Referral", "Anaesthetist", "Assistant Surgeon", "Partner"];
-    const nextRole = roles.find(
-      (role) => !existingRules.some((rule) => rule.role === role),
-    ) || "Doctor";
-    const profile = payeeProfiles.find(
-      (item) => item.name.trim().toLowerCase() === payee.trim().toLowerCase(),
-    );
-    setRuleForm({
-      ...emptyRule,
-      id: `RULE-${Date.now()}`,
-      payee,
-      role: nextRole,
-      consolidatedTerms: emptyConsolidatedTerms(),
-    });
-    setPayeeForm(profile || { ...emptyPayeeProfile, name: payee, category: nextRole });
-    setRuleModalOpen(true);
-  };
   const recalculatePendingPayables = (rule: ReconciliationRule) => {
     const terms = rule.consolidatedTerms;
     let updatedCount = 0;
@@ -900,10 +846,6 @@ export function FinanceDashboard() {
     const invalidSurgeonFee = terms.hospitalSurgeonFees.some((item) => !item.surgeryName.trim() || item.surgeonFee <= 0);
     if (!payee || !hasTerms || invalidShare || invalidSurgeonFee || (terms.anaesthetistEnabled && (terms.anaesthesiaFirstHourRate <= 0 || terms.anaesthesiaAdditionalHourRate < 0))) {
       setMessage("Enter a payee and at least one valid payout term.");
-      return;
-    }
-    if (rules.some((rule) => rule.id !== ruleForm.id && rule.payee.trim().toLowerCase() === payee.toLowerCase() && rule.role === ruleForm.role)) {
-      setMessage(`${payee} already has a ${ruleForm.role} payout role. Edit that role instead.`);
       return;
     }
     const nextRule = {
@@ -1509,23 +1451,16 @@ export function FinanceDashboard() {
             </button>
           </div>
           <div className="agreement-list">
-            {rules.length ? agreementGroups.map((group) => (
-              <article className="agreement-row" key={group.name.toLowerCase()}>
+            {rules.length ? rules.map((rule) => (
+              <article className="agreement-row" key={rule.id}>
                 <div>
-                  <strong>{group.name}</strong>
-                  <div className="agreement-roles">
-                    {group.rules.map((rule) => (
-                      <div className="agreement-role" key={rule.id}>
-                        <div>
-                          <span>{rule.consolidatedTerms ? `${rule.role} MOU terms` : `${rule.role} · ${rule.patientSource === "doctor_patient" ? "Doctor’s patient" : "Hospital’s patient"} · ${rule.payoutMethod === "surgeon_fee" ? `${rule.surgeryFees?.length || 1} surgery-wise surgeon fee${(rule.surgeryFees?.length || 1) === 1 ? "" : "s"}` : `${rule.percentage}% of ${rule.revenueBasis.replace(/_/g, " ")}`}`}</span>
-                          <small>{rule.fixedMonthlyAmount ? `Fixed monthly ${money(rule.fixedMonthlyAmount)} · ` : ""}{rule.opdSharePercentage ? `OPD ${rule.opdSharePercentage}% · ` : ""}Exclusions recorded · {rule.mouFileName ? `MOU: ${rule.mouFileName}` : "Manual agreement"}</small>
-                        </div>
-                        <button className="secondary" onClick={() => openRule(rule)}>Edit {rule.role}</button>
-                      </div>
-                    ))}
-                  </div>
+                  <strong>{rule.payee}</strong>
+                  <span>{rule.consolidatedTerms ? `${rule.role} MOU terms` : `${rule.role} · ${rule.patientSource === "doctor_patient" ? "Doctor’s patient" : "Hospital’s patient"} · ${rule.payoutMethod === "surgeon_fee" ? `${rule.surgeryFees?.length || 1} surgery-wise surgeon fee${(rule.surgeryFees?.length || 1) === 1 ? "" : "s"}` : `${rule.percentage}% of ${rule.revenueBasis.replace(/_/g, " ")}`}`}</span>
+                  <small>
+                    {rule.fixedMonthlyAmount ? `Fixed monthly ${money(rule.fixedMonthlyAmount)} · ` : ""}{rule.opdSharePercentage ? `OPD ${rule.opdSharePercentage}% · ` : ""}Exclusions recorded · {rule.mouFileName ? `MOU: ${rule.mouFileName}` : "Manual agreement"}
+                  </small>
                 </div>
-                <button className="secondary" onClick={() => openAdditionalPayoutRole(group.name, group.rules)}>Add payout role</button>
+                <button className="secondary" onClick={() => openRule(rule)}>Edit</button>
               </article>
             )) : (
               <p className="form-help">No agreements yet. Add the doctor or referral terms before importing cases.</p>
