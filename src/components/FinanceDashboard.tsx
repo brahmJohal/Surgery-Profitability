@@ -779,6 +779,27 @@ export function FinanceDashboard() {
     );
     setRuleModalOpen(true);
   };
+  const addPayoutRoleForCurrentPayee = () => {
+    const payee = ruleForm.payee.trim();
+    const isSavedRule = rules.some((rule) => rule.id === ruleForm.id);
+    if (!payee || !isSavedRule) {
+      setMessage("Save this payout role first, then add another role for the same payee.");
+      return;
+    }
+    const existingRoles = rules
+      .filter((rule) => rule.payee.trim().toLowerCase() === payee.toLowerCase())
+      .map((rule) => rule.role);
+    const roles = ["Doctor", "Referral", "Anaesthetist", "Assistant Surgeon", "Partner"];
+    const nextRole = roles.find((role) => !existingRoles.includes(role)) || "Doctor";
+    setRuleForm({
+      ...emptyRule,
+      id: `RULE-${Date.now()}`,
+      payee,
+      role: nextRole,
+      consolidatedTerms: emptyConsolidatedTerms(),
+    });
+    setPayeeForm((current) => ({ ...current, name: payee, category: nextRole }));
+  };
   const recalculatePendingPayables = (rule: ReconciliationRule) => {
     const terms = rule.consolidatedTerms;
     let updatedCount = 0;
@@ -846,6 +867,10 @@ export function FinanceDashboard() {
     const invalidSurgeonFee = terms.hospitalSurgeonFees.some((item) => !item.surgeryName.trim() || item.surgeonFee <= 0);
     if (!payee || !hasTerms || invalidShare || invalidSurgeonFee || (terms.anaesthetistEnabled && (terms.anaesthesiaFirstHourRate <= 0 || terms.anaesthesiaAdditionalHourRate < 0))) {
       setMessage("Enter a payee and at least one valid payout term.");
+      return;
+    }
+    if (rules.some((rule) => rule.id !== ruleForm.id && rule.payee.trim().toLowerCase() === payee.toLowerCase() && rule.role === ruleForm.role)) {
+      setMessage(`${payee} already has a ${ruleForm.role} payout role. Edit that role instead.`);
       return;
     }
     const nextRule = {
@@ -1479,7 +1504,7 @@ export function FinanceDashboard() {
                 <form onSubmit={saveRule}>
                   <div className="two">
                     <label className="field"><span>Doctor / payee name</span><input required value={ruleForm.payee} onChange={(event) => { const name = event.target.value; setRuleForm((current) => ({ ...current, payee: name })); setPayeeForm((current) => ({ ...current, name })); }} placeholder="e.g. Dr Mehta" /></label>
-                    <label className="field"><span>Payout role</span><select value={ruleForm.role} onChange={(event) => { const role = event.target.value; setRuleForm((current) => ({ ...current, role, consolidatedTerms: emptyConsolidatedTerms() })); setPayeeForm((current) => ({ ...current, category: role })); }}><option>Doctor</option><option>Referral</option><option>Anaesthetist</option><option>Assistant Surgeon</option><option>Partner</option></select></label>
+                    <div className="field payout-role-field"><span>Payout role</span><select value={ruleForm.role} onChange={(event) => { const role = event.target.value; setRuleForm((current) => ({ ...current, role, consolidatedTerms: emptyConsolidatedTerms() })); setPayeeForm((current) => ({ ...current, category: role })); }}><option>Doctor</option><option>Referral</option><option>Anaesthetist</option><option>Assistant Surgeon</option><option>Partner</option></select><button type="button" className="role-add-button" onClick={addPayoutRoleForCurrentPayee}>+ Add payout role</button></div>
                     <div className="mou-upload"><span>MOU document <em>optional record</em></span><input ref={mouInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={attachMou} /><small>{ruleForm.mouFileName ? `Attached: ${ruleForm.mouFileName}` : "Attach a PDF or image for the agreement record."}</small></div>
                   </div>
                   <p className="form-help">Each role has its own agreement screen. For doctors, all patient scenarios are shown separately.</p>

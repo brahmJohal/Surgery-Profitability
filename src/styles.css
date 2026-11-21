@@ -857,6 +857,24 @@ textarea:focus {
   color: #79502d;
 }
 .term-toggle input { accent-color: #8b6039; }
+.payout-role-field {
+  align-content: start;
+}
+.role-add-button {
+  width: fit-content;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8b6039;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.role-add-button:hover {
+  color: #5f3b1f;
+}
 .modal-backdrop { background: #26160dcc; }
 .confirm-modal p,
 .upi-modal p,
