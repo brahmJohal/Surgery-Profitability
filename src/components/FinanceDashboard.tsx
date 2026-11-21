@@ -524,6 +524,18 @@ export function FinanceDashboard() {
     }),
     [payables],
   );
+  const agreementGroups = useMemo(() => {
+    const groups = new Map<string, ReconciliationRule[]>();
+    rules.forEach((rule) => {
+      const key = rule.payee.trim().toLowerCase();
+      groups.set(key, [...(groups.get(key) || []), rule]);
+    });
+    return [...groups.entries()].map(([key, groupRules]) => ({
+      key,
+      payee: groupRules[0].payee,
+      rules: groupRules,
+    }));
+  }, [rules]);
   const payableGroups = useMemo<PayableGroup[]>(() => {
     const groups = new Map<string, Payable[]>();
     payables.forEach((item) => {
@@ -1509,16 +1521,16 @@ export function FinanceDashboard() {
             </button>
           </div>
           <div className="agreement-list">
-            {rules.length ? rules.map((rule) => (
-              <article className="agreement-row" key={rule.id}>
-                <div>
-                  <strong>{rule.payee}</strong>
-                  <span>{rule.consolidatedTerms ? `${rule.role} MOU terms` : `${rule.role} · ${rule.patientSource === "doctor_patient" ? "Doctor’s patient" : "Hospital’s patient"} · ${rule.payoutMethod === "surgeon_fee" ? `${rule.surgeryFees?.length || 1} surgery-wise surgeon fee${(rule.surgeryFees?.length || 1) === 1 ? "" : "s"}` : `${rule.percentage}% of ${rule.revenueBasis.replace(/_/g, " ")}`}`}</span>
-                  <small>
-                    {rule.fixedMonthlyAmount ? `Fixed monthly ${money(rule.fixedMonthlyAmount)} · ` : ""}{rule.opdSharePercentage ? `OPD ${rule.opdSharePercentage}% · ` : ""}Exclusions recorded · {rule.mouFileName ? `MOU: ${rule.mouFileName}` : "Manual agreement"}
-                  </small>
-                </div>
-                <button className="secondary" onClick={() => openRule(rule)}>Edit</button>
+            {agreementGroups.length ? agreementGroups.map((group) => (
+              <article className="agreement-payee-group" key={group.key}>
+                <h2>{group.payee}</h2>
+                {group.rules.map((rule) => <div className="agreement-row" key={rule.id}>
+                  <div>
+                    <strong>{rule.consolidatedTerms ? `${rule.role} MOU terms` : `${rule.role} · ${rule.patientSource === "doctor_patient" ? "Doctor’s patient" : "Hospital’s patient"} · ${rule.payoutMethod === "surgeon_fee" ? `${rule.surgeryFees?.length || 1} surgery-wise surgeon fee${(rule.surgeryFees?.length || 1) === 1 ? "" : "s"}` : `${rule.percentage}% of ${rule.revenueBasis.replace(/_/g, " ")}`}`}</strong>
+                    <small>{rule.fixedMonthlyAmount ? `Fixed monthly ${money(rule.fixedMonthlyAmount)} · ` : ""}{rule.opdSharePercentage ? `OPD ${rule.opdSharePercentage}% · ` : ""}Exclusions recorded · {rule.mouFileName ? `MOU: ${rule.mouFileName}` : "Manual agreement"}</small>
+                  </div>
+                  <button className="secondary" onClick={() => openRule(rule)}>Edit {rule.role}</button>
+                </div>)}
               </article>
             )) : (
               <p className="form-help">No agreements yet. Add the doctor or referral terms before importing cases.</p>

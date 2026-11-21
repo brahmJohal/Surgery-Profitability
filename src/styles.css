@@ -297,6 +297,17 @@ textarea {
   display: grid;
   gap: 9px;
 }
+.agreement-payee-group {
+  padding: 14px 0;
+  border-bottom: 1px solid #e5eaf1;
+}
+.agreement-payee-group h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.agreement-payee-group .agreement-row:last-child {
+  border-bottom: 0;
+}
 .agreement-row {
   display: flex;
   justify-content: space-between;
