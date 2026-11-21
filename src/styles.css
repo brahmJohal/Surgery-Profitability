@@ -899,6 +899,10 @@ textarea:focus {
 .additional-payout-role h2 {
   margin: 0;
 }
+.agreement-row strong {
+  color: #806f61;
+  font-size: 14px;
+}
 .modal-backdrop { background: #26160dcc; }
 .confirm-modal p,
 .upi-modal p,
