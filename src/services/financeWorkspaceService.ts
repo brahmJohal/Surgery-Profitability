@@ -9,9 +9,9 @@ export type FinanceWorkspace = {
 let workspaceCache: { expiresAt: number; value: FinanceWorkspace } | null = null;
 const workspaceCacheTtlMs = 30_000;
 
-export async function loadFinanceWorkspace(): Promise<FinanceWorkspace | null> {
+export async function loadFinanceWorkspace(force = false): Promise<FinanceWorkspace | null> {
   if (!supabase) return null;
-  if (workspaceCache && workspaceCache.expiresAt > Date.now()) {
+  if (!force && workspaceCache && workspaceCache.expiresAt > Date.now()) {
     return structuredClone(workspaceCache.value);
   }
   const { data, error } = await supabase.rpc("finance_load_workspace");
