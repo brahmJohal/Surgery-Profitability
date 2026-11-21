@@ -105,6 +105,8 @@ type Payable = {
   partnerType?: string;
   anaesthesiaHours?: number;
   deductionAmounts?: Partial<Record<DeductionKey, number>>;
+  selectedDeductions?: DeductionKey[];
+  payoutCalculation?: "percentage" | "fixed" | "hourly";
 };
 type ReconciliationRule = {
   id: string;
@@ -1066,6 +1068,14 @@ export function FinanceDashboard() {
             0,
           );
           const eligibleRevenue = Math.max(0, row.surgeryAmount - excludedCosts);
+          const payoutCalculation: Payable["payoutCalculation"] =
+            row.type === "Anaesthetist" || matchingRule?.role === "Anaesthetist"
+              ? "hourly"
+              : row.type === "Doctor" && importedPatientSource === "hospital_patient" && terms?.hospitalSurgeonFees.length
+                ? "fixed"
+                : matchingRule?.payoutMethod === "surgeon_fee"
+                  ? "fixed"
+                  : "percentage";
           return {
             id: `PAY-${Date.now().toString().slice(-6)}-${index + 1}`,
             payee: row.payee,
@@ -1086,6 +1096,8 @@ export function FinanceDashboard() {
             partnerType: row.partnerType,
             anaesthesiaHours: row.anaesthesiaHours,
             deductionAmounts,
+            selectedDeductions,
+            payoutCalculation,
             gross: row.type === "Anaesthetist" && terms?.anaesthetistEnabled
               ? terms.anaesthesiaFirstHourRate +
                 Math.max(0, Math.ceil((row.anaesthesiaHours || 1) - 1)) *
@@ -1115,10 +1127,53 @@ export function FinanceDashboard() {
           };
         },
       );
-      savePayables([...additions, ...payables]);
+      // Some MOUs use another calculated payout as a deduction. For example,
+      // a Doctor may receive 20% after the Referral payout for the same IPD.
+      // Recalculate linked payouts together so Excel does not need to contain
+      // already-calculated doctor or referral values.
+      const payoutTypeForDeduction: Partial<Record<DeductionKey, Payable["type"]>> = {
+        referral_payout: "Referral",
+        surgeon_payout: "Doctor",
+        anaesthetist: "Anaesthetist",
+        assistant_surgeon: "Assistant Surgeon",
+        b2b_partner_payout: "Partner",
+      };
+      let linkedAdditions = additions;
+      for (let pass = 0; pass < 16; pass += 1) {
+        let largestChange = 0;
+        const next = linkedAdditions.map((item) => {
+          const deductionAmounts = { ...item.deductionAmounts };
+          (item.selectedDeductions || []).forEach((deduction) => {
+            const payoutType = payoutTypeForDeduction[deduction];
+            if (!payoutType) return;
+            const linkedPayouts = linkedAdditions.filter(
+              (candidate) => candidate.caseRef === item.caseRef && candidate.type === payoutType,
+            );
+            if (linkedPayouts.length) {
+              deductionAmounts[deduction] = linkedPayouts.reduce(
+                (total, candidate) => total + candidate.gross,
+                0,
+              );
+            }
+          });
+          const excludedCosts = (item.selectedDeductions || []).reduce(
+            (total, deduction) => total + (deductionAmounts[deduction] || 0),
+            0,
+          );
+          const eligibleRevenue = Math.max(0, (item.totalRevenue || 0) - excludedCosts);
+          const gross = item.payoutCalculation === "percentage"
+            ? eligibleRevenue * ((item.percentage || 0) / 100)
+            : item.gross;
+          largestChange = Math.max(largestChange, Math.abs(gross - item.gross));
+          return { ...item, deductionAmounts, excludedCosts, eligibleRevenue, gross };
+        });
+        linkedAdditions = next;
+        if (largestChange < 0.01) break;
+      }
+      savePayables([...linkedAdditions, ...payables]);
       setActiveTab("queue");
       setMessage(
-        `${additions.length} payout${additions.length === 1 ? "" : "s"} added to Monday's queue.${basicRuleCount ? ` ${basicRuleCount} used the basic 20% rule because no usable MOU was found.` : ""}`,
+        `${linkedAdditions.length} payout${linkedAdditions.length === 1 ? "" : "s"} added to Monday's queue.${basicRuleCount ? ` ${basicRuleCount} used the basic 20% rule because no usable MOU was found.` : ""}`,
       );
     } catch (error) {
       setMessage(
