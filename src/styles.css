@@ -875,6 +875,16 @@ textarea:focus {
 .role-add-button:hover {
   color: #5f3b1f;
 }
+.additional-payout-role {
+  margin: 18px 0;
+  padding: 20px;
+  border: 1px solid #e6d8c7;
+  border-radius: 16px;
+  background: #fffdf9;
+}
+.additional-payout-role h2 {
+  margin: 0;
+}
 .modal-backdrop { background: #26160dcc; }
 .confirm-modal p,
 .upi-modal p,

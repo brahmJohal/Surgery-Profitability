@@ -313,6 +313,7 @@ export function FinanceDashboard() {
   const [payeeModalOpen, setPayeeModalOpen] = useState(false);
   const [rules, setRules] = useState<ReconciliationRule[]>(savedRules);
   const [ruleForm, setRuleForm] = useState<ReconciliationRule>(emptyRule);
+  const [additionalRoleForms, setAdditionalRoleForms] = useState<ReconciliationRule[]>([]);
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [upiPayment, setUpiPayment] = useState<UpiPayment | null>(null);
@@ -777,28 +778,40 @@ export function FinanceDashboard() {
         (profile) => profile.name.trim().toLowerCase() === payeeName.trim().toLowerCase(),
       ) || { ...emptyPayeeProfile, name: payeeName, category: rule?.role || "Doctor" },
     );
+    setAdditionalRoleForms([]);
     setRuleModalOpen(true);
   };
   const addPayoutRoleForCurrentPayee = () => {
     const payee = ruleForm.payee.trim();
-    const isSavedRule = rules.some((rule) => rule.id === ruleForm.id);
-    if (!payee || !isSavedRule) {
-      setMessage("Save this payout role first, then add another role for the same payee.");
+    if (!payee) {
+      setMessage("Enter the doctor / payee name before adding another payout role.");
       return;
     }
-    const existingRoles = rules
+    const existingRoles = [ruleForm.role, ...additionalRoleForms.map((rule) => rule.role), ...rules
       .filter((rule) => rule.payee.trim().toLowerCase() === payee.toLowerCase())
-      .map((rule) => rule.role);
+      .map((rule) => rule.role)];
     const roles = ["Doctor", "Referral", "Anaesthetist", "Assistant Surgeon", "Partner"];
-    const nextRole = roles.find((role) => !existingRoles.includes(role)) || "Doctor";
-    setRuleForm({
+    const nextRole = roles.find((role) => !existingRoles.includes(role));
+    if (!nextRole) {
+      setMessage(`${payee} already has all available payout roles.`);
+      return;
+    }
+    setAdditionalRoleForms((current) => [...current, {
       ...emptyRule,
       id: `RULE-${Date.now()}`,
       payee,
       role: nextRole,
       consolidatedTerms: emptyConsolidatedTerms(),
-    });
-    setPayeeForm((current) => ({ ...current, name: payee, category: nextRole }));
+    }]);
+  };
+  const updateAdditionalRole = (id: string, update: Partial<ReconciliationRule>) => {
+    setAdditionalRoleForms((current) => current.map((rule) => rule.id === id ? { ...rule, ...update } : rule));
+  };
+  const updateAdditionalTerms = (id: string, update: Partial<ConsolidatedTerms>) => {
+    setAdditionalRoleForms((current) => current.map((rule) => rule.id === id ? {
+      ...rule,
+      consolidatedTerms: { ...(rule.consolidatedTerms || emptyConsolidatedTerms()), ...update },
+    } : rule));
   };
   const recalculatePendingPayables = (rule: ReconciliationRule) => {
     const terms = rule.consolidatedTerms;
@@ -869,8 +882,19 @@ export function FinanceDashboard() {
       setMessage("Enter a payee and at least one valid payout term.");
       return;
     }
-    if (rules.some((rule) => rule.id !== ruleForm.id && rule.payee.trim().toLowerCase() === payee.toLowerCase() && rule.role === ruleForm.role)) {
-      setMessage(`${payee} already has a ${ruleForm.role} payout role. Edit that role instead.`);
+    const nextAdditionalRules = additionalRoleForms.map((rule) => ({
+      ...rule,
+      payee,
+      surgeryFees: rule.consolidatedTerms?.hospitalSurgeonFees || [],
+      surgeonFee: rule.consolidatedTerms?.hospitalSurgeonFees[0]?.surgeonFee || 0,
+    }));
+    const invalidAdditionalRole = nextAdditionalRules.some((rule) => {
+      const roleTerms = rule.consolidatedTerms || emptyConsolidatedTerms();
+      const roleShares = [roleTerms.doctorPatient, roleTerms.hospitalPatient, roleTerms.referralCash, roleTerms.referralInsurance, roleTerms.partnerPatientAndDoctor, roleTerms.partnerPatientOnly, roleTerms.assistantSurgeon];
+      return !(roleShares.some((share) => share.enabled && share.percentage > 0) || (roleTerms.anaesthetistEnabled && roleTerms.anaesthesiaFirstHourRate > 0));
+    });
+    if (invalidAdditionalRole) {
+      setMessage("Enter valid payout terms for every added payout role.");
       return;
     }
     const nextRule = {
@@ -880,7 +904,15 @@ export function FinanceDashboard() {
       surgeryFees: terms.hospitalSurgeonFees,
       surgeonFee: terms.hospitalSurgeonFees[0]?.surgeonFee || 0,
     };
-    saveRules([...rules.filter((rule) => rule.id !== nextRule.id), nextRule]);
+    const roleNames = [nextRule, ...nextAdditionalRules].map((rule) => rule.role);
+    const duplicateRole = new Set(roleNames).size !== roleNames.length || rules.some(
+      (rule) => rule.id !== nextRule.id && rule.payee.trim().toLowerCase() === payee.toLowerCase() && roleNames.includes(rule.role),
+    );
+    if (duplicateRole) {
+      setMessage(`${payee} already has this payout role. Edit the existing role instead.`);
+      return;
+    }
+    saveRules([...rules.filter((rule) => rule.id !== nextRule.id && !nextAdditionalRules.some((additional) => additional.id === rule.id)), nextRule, ...nextAdditionalRules]);
     const recalculated = recalculatePendingPayables(nextRule);
     const profile = {
       ...payeeForm,
@@ -896,6 +928,7 @@ export function FinanceDashboard() {
       profile,
     ];
     savePayeeProfiles(nextProfiles);
+    setAdditionalRoleForms([]);
     setRuleModalOpen(false);
     setMessage(`Reconciliation agreement saved for ${payee}.${recalculated ? ` ${recalculated} unpaid payout${recalculated === 1 ? "" : "s"} recalculated.` : ""}`);
   };
@@ -1507,7 +1540,17 @@ export function FinanceDashboard() {
                     <div className="field payout-role-field"><span>Payout role</span><select value={ruleForm.role} onChange={(event) => { const role = event.target.value; setRuleForm((current) => ({ ...current, role, consolidatedTerms: emptyConsolidatedTerms() })); setPayeeForm((current) => ({ ...current, category: role })); }}><option>Doctor</option><option>Referral</option><option>Anaesthetist</option><option>Assistant Surgeon</option><option>Partner</option></select><button type="button" className="role-add-button" onClick={addPayoutRoleForCurrentPayee}>+ Add payout role</button></div>
                     <div className="mou-upload"><span>MOU document <em>optional record</em></span><input ref={mouInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={attachMou} /><small>{ruleForm.mouFileName ? `Attached: ${ruleForm.mouFileName}` : "Attach a PDF or image for the agreement record."}</small></div>
                   </div>
-                  <p className="form-help">Each role has its own agreement screen. For doctors, all patient scenarios are shown separately.</p>
+                  {additionalRoleForms.map((extra, index) => {
+                    const extraTerms = extra.consolidatedTerms || emptyConsolidatedTerms();
+                    const shareKey = extra.role === "Referral" ? "referralCash" : extra.role === "Partner" ? "partnerPatientOnly" : extra.role === "Assistant Surgeon" ? "assistantSurgeon" : "doctorPatient";
+                    const share = extraTerms[shareKey];
+                    return <section className="additional-payout-role" key={extra.id}>
+                      <div className="section-title"><div><h2>Additional payout role {index + 1}</h2><p className="form-help">This payout is saved with the same payee and bank details.</p></div><button type="button" className="remove-surgery" onClick={() => setAdditionalRoleForms((current) => current.filter((rule) => rule.id !== extra.id))}>Remove</button></div>
+                      <label className="field"><span>Payout role</span><select value={extra.role} onChange={(event) => updateAdditionalRole(extra.id, { role: event.target.value, consolidatedTerms: emptyConsolidatedTerms() })}><option>Doctor</option><option>Referral</option><option>Anaesthetist</option><option>Assistant Surgeon</option><option>Partner</option></select></label>
+                      {extra.role === "Anaesthetist" ? <div className="two"><label className="field"><span>First hour payout</span><div className="amount"><b>₹</b><input type="number" min="0" value={extraTerms.anaesthesiaFirstHourRate || ""} onChange={(event) => updateAdditionalTerms(extra.id, { anaesthesiaFirstHourRate: Number(event.target.value), anaesthetistEnabled: Number(event.target.value) > 0 })} /></div></label><label className="field"><span>Each additional hour</span><div className="amount"><b>₹</b><input type="number" min="0" value={extraTerms.anaesthesiaAdditionalHourRate || ""} onChange={(event) => updateAdditionalTerms(extra.id, { anaesthesiaAdditionalHourRate: Number(event.target.value) })} /></div></label></div> : <div className="two"><label className="field"><span>{extra.role} sharing percentage</span><div className="amount"><b>%</b><input type="number" min="0" max="100" value={share.percentage || ""} onChange={(event) => updateAdditionalTerms(extra.id, { [shareKey]: { ...share, enabled: Number(event.target.value) > 0, percentage: Number(event.target.value) } })} /></div></label><label className="field"><span>Revenue basis</span><select value={share.revenueBasis} onChange={(event) => updateAdditionalTerms(extra.id, { [shareKey]: { ...share, revenueBasis: event.target.value as ReconciliationRule["revenueBasis"] } })}><option value="remaining_amount">Remaining amount after deductions</option><option value="payment_received">Payment received</option><option value="billed">Gross billed amount</option></select></label></div>}
+                    </section>;
+                  })}
+                  <p className="form-help">Add another payout role here to keep all roles for this payee in the same agreement form.</p>
                   {ruleForm.role === "Doctor" && <>
                   {renderSharingSection("doctorPatient", "Doctor’s patient", "Doctor receives a percentage after the selected deductions.")}
                   {renderSharingSection("hospitalPatient", "Hospital’s patient — percentage share", "Doctor receives a percentage after the selected deductions.")}
