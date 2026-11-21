@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { importReconciliationFile } from "../lib/excelImport";
 import { loadFinanceWorkspace, replaceFinanceWorkspaceCollection } from "../services/financeWorkspaceService";
 import { supabase } from "../lib/supabase";
+import { downloadMouPdf } from "../lib/mouPdf";
 
 type PayableStatus = "submitted" | "approved" | "paid" | "on_hold";
 type ConfirmAction = "delete_payee" | "delete_agreement" | "clear_unpaid_queue";
@@ -896,6 +897,34 @@ export function FinanceDashboard() {
     }));
     setMessage("MOU document attached. Enter the agreement terms manually, then save.");
   };
+  const downloadFilledMou = () => {
+    if (!ruleForm.payee.trim()) {
+      setMessage("Enter the doctor / payee name before downloading the MOU.");
+      return;
+    }
+    downloadMouPdf({
+      payee: ruleForm.payee.trim(),
+      role: ruleForm.role,
+      effectiveFrom: ruleForm.effectiveFrom,
+      effectiveTo: ruleForm.effectiveTo,
+      paymentTerms: ruleForm.paymentTerms,
+      notes: ruleForm.notes,
+      opdSharePercentage: ruleForm.opdSharePercentage,
+      opdPrice: ruleForm.opdPrice,
+      fixedRental: ruleForm.fixedRental,
+      fixedMonthlyAmount: ruleForm.fixedMonthlyAmount,
+      wardVisitCharge: ruleForm.wardVisitCharge,
+      icuEmergencyVisitCharge: ruleForm.icuEmergencyVisitCharge,
+      anaesthesiaFirstHourRate: ruleForm.anaesthesiaFirstHourRate,
+      anaesthesiaAdditionalHourRate: ruleForm.anaesthesiaAdditionalHourRate,
+      accountHolder: payeeForm.accountHolder,
+      accountNumber: payeeForm.accountNumber,
+      ifsc: payeeForm.ifsc,
+      upi: payeeForm.upi,
+      terms: consolidatedTerms,
+    });
+    setMessage(`MOU PDF downloaded for ${ruleForm.payee.trim()}.`);
+  };
   const renderSharingSection = (
     key: keyof Pick<ConsolidatedTerms, "doctorPatient" | "hospitalPatient" | "referralCash" | "referralInsurance" | "partnerPatientAndDoctor" | "partnerPatientOnly" | "assistantSurgeon">,
     title: string,
@@ -1443,7 +1472,7 @@ export function FinanceDashboard() {
                     <label className="field"><span>IFSC code</span><input value={payeeForm.ifsc} onChange={(event) => setPayeeForm((current) => ({ ...current, ifsc: event.target.value }))} placeholder="e.g. HDFC0001234" /></label>
                     <label className="field"><span>UPI ID <em>optional</em></span><input value={payeeForm.upi} onChange={(event) => setPayeeForm((current) => ({ ...current, upi: event.target.value }))} placeholder="name@bank" /></label>
                   </div>
-                  <button className="primary">Save agreement</button><button type="button" className="secondary" onClick={() => setRuleModalOpen(false)}>Cancel</button>{rules.some((rule) => rule.id === ruleForm.id) && <button type="button" className="danger" onClick={requestDeleteRule}>Delete agreement</button>}
+                  <button className="primary">Save agreement</button><button type="button" className="secondary" onClick={downloadFilledMou}>Download MOU PDF</button><button type="button" className="secondary" onClick={() => setRuleModalOpen(false)}>Cancel</button>{rules.some((rule) => rule.id === ruleForm.id) && <button type="button" className="danger" onClick={requestDeleteRule}>Delete agreement</button>}
                 </form>
                 {false && <form onSubmit={saveRule}>
                   <div className="two">
