@@ -302,8 +302,11 @@ textarea {
   border-bottom: 1px solid #e5eaf1;
 }
 .agreement-payee-group h2 {
-  margin: 0;
-  font-size: 22px;
+  margin: 0 0 4px;
+  color: #342317;
+  font-size: 16px;
+  letter-spacing: normal;
+  text-transform: none;
 }
 .agreement-payee-group .agreement-row:last-child {
   border-bottom: 0;
