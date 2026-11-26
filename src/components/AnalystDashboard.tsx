@@ -2,7 +2,11 @@ import { useMemo, useState } from "react";
 import { csvRows } from "../lib/excelImport";
 
 type Lead = Record<string, string>;
-const required = ["Lead ID", "Status", "Sub-status", "Owner"];
+const required = ["Lead ID", "Status", "Sub-status", "Owner", "Phone", "Created At"];
+const phoneKey = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 10 ? digits : digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : "";
+};
 const normal = (value: string | undefined) => (value || "").trim().toUpperCase();
 const labels: Record<string, string> = { NEW: "New", CONTACTED: "Contacted", INTERESTED: "Interested", FOLLOW_UP: "Follow-up", CONVERTED: "Converted", CLOSED: "Closed", LOST: "Lost" };
 const booked = (row: Lead) => normal(row.Status) === "CONVERTED" && normal(row["Sub-status"]) === "OPD_BOOKED";
@@ -15,6 +19,8 @@ export function AnalystDashboard() {
   const [filename, setFilename] = useState("");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [error, setError] = useState("");
+  const [duplicates, setDuplicates] = useState(0);
+  const [missingDates, setMissingDates] = useState(0);
   const [popup, setPopup] = useState<{ title: string; leads: Lead[] } | null>(null);
   const loadLeads = async (file?: File) => {
     if (!file) return;
@@ -24,9 +30,20 @@ export function AnalystDashboard() {
       const missing = required.filter((value) => !headers.includes(value));
       if (missing.length) throw new Error(`Missing columns: ${missing.join(", ")}`);
       const parsed = rows.map((values) => Object.fromEntries(headers.map((key, index) => [key, values[index] || ""])));
-      setFilename(file.name); setLeads(parsed); setPopup(null); setError("");
+      const unique = new Map<string, Lead>();
+      parsed.forEach((row, index) => {
+        const phone = phoneKey(row.Phone);
+        const key = phone ? `phone:${phone}` : `row:${index}`;
+        const previous = unique.get(key);
+        const timestamp = Date.parse(row["Created At"]);
+        const previousTimestamp = previous ? Date.parse(previous["Created At"]) : NaN;
+        if (!previous || (Number.isFinite(timestamp) && (!Number.isFinite(previousTimestamp) || timestamp > previousTimestamp))) unique.set(key, row);
+      });
+      setDuplicates(parsed.length - unique.size);
+      setMissingDates([...unique.values()].filter((row) => !Number.isFinite(Date.parse(row["Created At"]))).length);
+      setFilename(file.name); setLeads([...unique.values()]); setPopup(null); setError("");
     } catch (e) {
-      setFilename(""); setLeads([]); setPopup(null);
+      setFilename(""); setLeads([]); setDuplicates(0); setMissingDates(0); setPopup(null);
       setError(e instanceof Error ? e.message : "Could not read this file.");
     }
   };
@@ -47,8 +64,8 @@ export function AnalystDashboard() {
     <section className="card"><h1>Sales analyst dashboard</h1>
       <p>Upload a lead dump CSV. Data stays in this browser session and is not saved or shared.</p>
       <label className="field"><span>Lead dump CSV</span><input type="file" accept=".csv,text/csv" onChange={(event) => void loadLeads(event.target.files?.[0])} /></label>
-      {filename && <p>{filename} — {leads.length.toLocaleString()} lead rows loaded.</p>}{error && <p role="alert">{error}</p>}
-      <p className="form-help">Each uploaded row is a lead. Ideal L2O = currently OPD booked ÷ lead rows; real L2O = currently OPD visited ÷ lead rows. IPD done = CLOSED + SUCCESSFULLY_TREATED. Current statuses are separate snapshots: previous OPD visits cannot be recovered from them. CASE_COMPLETED is listed separately until its meaning is confirmed. Rates depend on the file's date range and are not cohort-adjusted.</p>
+      {filename && <p>{filename} — {leads.length.toLocaleString()} leads counted; {duplicates.toLocaleString()} duplicate phone rows removed.{missingDates > 0 && ` ${missingDates.toLocaleString()} retained leads have no valid creation date; for equal or missing dates the first row is kept.`}</p>}{error && <p role="alert">{error}</p>}
+      <p className="form-help">One valid phone number counts as one lead; its most recently created lead supplies the BD and status. Rows without a valid phone remain separate. Shared phone numbers may represent different patients. Ideal L2O = currently OPD booked ÷ leads; real L2O = currently OPD visited ÷ leads. IPD done = CLOSED + SUCCESSFULLY_TREATED. Current statuses are separate snapshots: previous OPD visits cannot be recovered from them. CASE_COMPLETED is listed separately until its meaning is confirmed. Rates depend on the file's date range and are not cohort-adjusted.</p>
     </section>
     {filename && <><section className="card analyst-section"><h2>Overall performance</h2><div className="analyst-scroll"><table><thead><tr><th>Total leads</th><th>OPD booked</th><th>Ideal L2O</th><th>OPD visited</th><th>Real L2O</th><th>IPD done</th></tr></thead><tbody><tr><td>{countButton("All leads", leads)}</td><td>{countButton("OPD booked", bookedRows)}</td><td>{percent(bookedRows.length, leads.length)}</td><td>{countButton("OPD visited", visitedRows)}</td><td>{percent(visitedRows.length, leads.length)}</td><td>{countButton("IPD done", treatedRows)}</td></tr></tbody></table></div></section>
     <section className="card analyst-section"><h2>BD performance</h2><div className="analyst-scroll"><table><thead><tr><th>BD</th><th>Leads</th><th>OPD booked</th><th>Ideal L2O</th><th>OPD visited</th><th>Real L2O</th><th>IPD done</th></tr></thead><tbody>{[...report.groups].sort((a,b) => a[0].localeCompare(b[0])).map(([owner, rows]) => { const b = rows.filter(booked), v = rows.filter(visited), i = rows.filter(treated); return <tr key={owner}><td>{owner}</td><td>{countButton(`${owner} — leads`, rows)}</td><td>{countButton(`${owner} — OPD booked`, b)}</td><td>{percent(b.length, rows.length)}</td><td>{countButton(`${owner} — OPD visited`, v)}</td><td>{percent(v.length, rows.length)}</td><td>{countButton(`${owner} — IPD done`, i)}</td></tr>; })}</tbody></table></div></section>
