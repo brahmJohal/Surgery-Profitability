@@ -24,6 +24,7 @@ const FinanceDashboard = lazy(() =>
     default: module.FinanceDashboard,
   })),
 );
+const AnalystDashboard = lazy(() => import("./components/AnalystDashboard").then((module) => ({ default: module.AnalystDashboard })));
 const SalesPatientEntry = lazy(() =>
   import("./components/SalesPatientEntry").then((module) => ({
     default: module.SalesPatientEntry,
@@ -197,7 +198,7 @@ export default function App() {
   const [salesView, setSalesView] = useState<"calculator" | "patient-queue">(
     "calculator",
   );
-  const [adminView, setAdminView] = useState<"calculator" | "users">("calculator");
+  const [adminView, setAdminView] = useState<"calculator" | "users" | "analyst">("calculator");
 
   const isAdmin = role === "admin";
   const isOnlineSales = role === "online_sales";
@@ -213,6 +214,7 @@ export default function App() {
 
     if (data?.role === "admin") return "admin";
     if (data?.role === "finance") return "finance";
+    if (data?.role === "analyst") return "analyst";
     if (data?.role === "online_sales") return "online_sales";
 
     return "offline_sales";
@@ -240,7 +242,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!role) return;
+    if (!role || role === "analyst") return;
 
     getOnlineSalesFixedReferral()
       .then((amount) => {
@@ -258,7 +260,7 @@ export default function App() {
   }, [role]);
 
   useEffect(() => {
-    if (!role) return;
+    if (!role || role === "analyst") return;
 
     setLoading(true);
 
@@ -451,6 +453,7 @@ export default function App() {
 
   const isSales = role === "online_sales" || role === "offline_sales";
   const isFinance = role === "finance";
+  const isAnalyst = role === "analyst";
 
   return (
     <>
@@ -459,9 +462,10 @@ export default function App() {
           <strong>True Hospitals</strong>
           <small>
             {isAdmin
-              ? adminView === "users" ? "User management" : "Admin dashboard"
+              ? adminView === "users" ? "User management" : adminView === "analyst" ? "Sales analytics" : "Admin dashboard"
               : isFinance
                 ? "Finance reconciliation"
+                : isAnalyst ? "Sales analytics"
                 : salesView === "patient-queue"
                   ? "Sales patient queue"
                   : "Sales calculator"}
@@ -474,6 +478,7 @@ export default function App() {
               ? "Administrator"
               : isFinance
                 ? "Finance team"
+                : isAnalyst ? "Analyst"
                 : "Sales team"}
           </span>
           {isSales && (
@@ -498,6 +503,7 @@ export default function App() {
               {adminView === "users" ? "Calculator" : "User management"}
             </button>
           )}
+          {isAdmin && <button className="header-button" onClick={() => setAdminView((current) => current === "analyst" ? "calculator" : "analyst")}>{adminView === "analyst" ? "Calculator" : "Sales analytics"}</button>}
           <button className="signout" onClick={signOut}>
             Sign out
           </button>
@@ -508,6 +514,8 @@ export default function App() {
         <Suspense fallback={<WorkspaceSkeleton />}>
           <UserManagement currentUserId={currentUserId} />
         </Suspense>
+      ) : isAnalyst || (isAdmin && adminView === "analyst") ? (
+        <Suspense fallback={<WorkspaceSkeleton />}><AnalystDashboard /></Suspense>
       ) : isFinance ? (
         <Suspense fallback={<WorkspaceSkeleton />}>
           <FinanceDashboard />

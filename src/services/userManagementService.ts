@@ -19,6 +19,7 @@ export type NewManagedUser = {
 const supportedRoles: UserRole[] = [
   "admin",
   "finance",
+  "analyst",
   "offline_sales",
   "online_sales",
 ];

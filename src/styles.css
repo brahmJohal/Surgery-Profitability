@@ -903,6 +903,12 @@ textarea:focus {
   color: #806f61;
   font-size: 14px;
 }
+.analyst-uploads { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.analyst-section { margin-top: 18px; }
+.analyst-section h2 { color: #342317; font-size: 18px; text-transform: none; letter-spacing: normal; margin: 0 0 16px; }
+.analyst-scroll { overflow-x: auto; }
+.analyst-scroll table { width: 100%; border-collapse: collapse; text-align: left; }
+.analyst-scroll th, .analyst-scroll td { padding: 10px; border-bottom: 1px solid #eadfd2; white-space: nowrap; }
 .modal-backdrop { background: #26160dcc; }
 .confirm-modal p,
 .upi-modal p,

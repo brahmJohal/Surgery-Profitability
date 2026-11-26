@@ -16,7 +16,7 @@ export type Calculation = {
   referralShare: number;
   extraRental: number;
 };
-export type UserRole = "admin" | "finance" | "offline_sales" | "online_sales";
+export type UserRole = "admin" | "finance" | "offline_sales" | "online_sales" | "analyst";
 export type ProfitResult = { profit: number; margin: number };
 export type PatientQueueEntry = {
   id: string;

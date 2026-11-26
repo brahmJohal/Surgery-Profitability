@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 const roles: { value: UserRole; label: string }[] = [
   { value: "admin", label: "Administrator" },
   { value: "finance", label: "Finance" },
+  { value: "analyst", label: "Analyst" },
   { value: "offline_sales", label: "Offline Sales" },
   { value: "online_sales", label: "Online Sales" },
 ];

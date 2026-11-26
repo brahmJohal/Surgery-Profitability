@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const roles = new Set(["admin", "finance", "offline_sales", "online_sales"]);
+const roles = new Set(["admin", "finance", "offline_sales", "online_sales", "analyst"]);
 const origins = new Set([
   "https://trueartis.tech",
   "https://www.trueartis.tech",

@@ -64,7 +64,7 @@ function amountValue(value: string) {
   return Number(cleaned);
 }
 
-function csvRows(text: string): string[][] {
+export function csvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
