@@ -10,7 +10,6 @@ const columns: Record<Kind, string[]> = {
     "Lead ID",
     "Phone",
     "Owner",
-    "Campaign",
     "Created At",
     "Status",
     "Sub-status",
@@ -122,7 +121,6 @@ export function AnalystDashboard() {
   };
   const report = useMemo(() => {
     const bd = new Map<string, Group>(),
-      campaign = new Map<string, Group>(),
       doctor = new Map<string, Group>(),
       surgery = new Map<string, Group>(),
       partner = new Map<string, Group>();
@@ -170,7 +168,6 @@ export function AnalystDashboard() {
     for (const l of leads) {
       const id = leadId(l);
       get(bd, l.Owner).leads.add(id);
-      get(campaign, l.Campaign || l["Meta/Google Campaign"]).leads.add(id);
     }
     const opdFirst = new Map<string, number>();
     for (const r of files.opd) {
@@ -192,11 +189,9 @@ export function AnalystDashboard() {
         amount = Number((r.Total || "0").replace(/[,₹\s]/g, ""));
       const groups: Group[] = [];
       if (l) {
-        const b = get(bd, l.Owner),
-          c = get(campaign, l.Campaign || l["Meta/Google Campaign"]);
+        const b = get(bd, l.Owner);
         b.opdLeads.add(leadId(l));
-        c.opdLeads.add(leadId(l));
-        groups.push(b, c, get(doctor, r["Doctor NAME"]));
+        groups.push(b, get(doctor, r["Doctor NAME"]));
         const p = details(
           id,
           r["UHID NO"],
@@ -220,17 +215,17 @@ export function AnalystDashboard() {
       }
       const l = latest(r.patientPhone, t),
         groups: Group[] = [];
+      if (!l) {
+        unmatchedIpd++;
+        continue;
+      }
       const rawPartner = (r.partnerLeadName || "").trim();
       const partnerName = /^(?:n\/?a|none|null|-)$/i.test(rawPartner) ? "" : rawPartner;
       const partnerSource = /partner/i.test(r.admissionLeadSource || "");
       const treated =
         l?.Status.trim().toUpperCase() === "CLOSED" &&
         l?.["Sub-status"].trim().toUpperCase() === "SUCCESSFULLY_TREATED";
-      if (l) {
-        const c = get(campaign, l.Campaign || l["Meta/Google Campaign"]);
-        c.ipdLeads.add(leadId(l));
-        groups.push(c, get(doctor, r.doctorName), get(surgery, r.surgeryNames));
-      } else unmatchedIpd++;
+      groups.push(get(doctor, r.doctorName), get(surgery, r.surgeryNames));
       if (partnerName) {
         groups.push(get(partner, partnerName));
         if ((treated && l?.Owner.trim()) || r.salesPersonName.trim())
@@ -256,8 +251,6 @@ export function AnalystDashboard() {
         if (r.salesPersonName.trim() && r.salesPersonName.trim().toLowerCase() !== l.Owner.trim().toLowerCase()) {
           conflicts.push({ caseRef: r.ipdNumber, uhid: r.uhid, assigned: l.Owner, partner: "—", reason: `IPD sales person differs: ${r.salesPersonName.trim()}` });
         }
-      } else if (!l && r.salesPersonName.trim()) {
-        groups.push(get(bd, r.salesPersonName));
       } else if (l && r.salesPersonName.trim()) {
         conflicts.push({
           caseRef: r.ipdNumber,
@@ -284,7 +277,6 @@ export function AnalystDashboard() {
     }
     return {
       bd,
-      campaign,
       doctor,
       surgery,
       partner,
@@ -396,9 +388,8 @@ export function AnalystDashboard() {
         <p className="form-help">
           IPD final credit goes to the named partner first. Otherwise, a matched
           lead is credited to its owner only when marked CLOSED and
-          SUCCESSFULLY_TREATED; unmatched IPD records can be credited to the
-          sales person in the IPD file. Campaign, doctor and surgery figures
-          remain lead-matched and are not final-credit totals.
+          SUCCESSFULLY_TREATED. Only patients matched to a lead created before
+          the visit are included. Doctor and surgery figures are not final-credit totals.
         </p>
         <p className="form-help">
           Unmatched OPD lines: {report.unmatchedOpd} · Unmatched IPD rows:{" "}
@@ -408,7 +399,6 @@ export function AnalystDashboard() {
         </p>
       </section>
       {table("BD performance", report.bd, true)}
-      {table("Campaign performance", report.campaign, true)}
       {table("Doctor performance", report.doctor, false)}
       {table("Surgery performance", report.surgery, false)}
       <section className="card analyst-section">
