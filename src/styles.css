@@ -909,6 +909,9 @@ textarea:focus {
 .analyst-scroll { overflow-x: auto; }
 .analyst-scroll table { width: 100%; border-collapse: collapse; text-align: left; }
 .analyst-scroll th, .analyst-scroll td { padding: 10px; border-bottom: 1px solid #eadfd2; white-space: nowrap; }
+.analyst-count { border: 0; padding: 0; background: transparent; color: #8b6039; font: inherit; text-decoration: underline; cursor: pointer; }
+.analyst-count:disabled { color: inherit; text-decoration: none; cursor: default; }
+.analyst-patient-modal { width: min(1000px, 94vw); }
 .modal-backdrop { background: #26160dcc; }
 .confirm-modal p,
 .upi-modal p,
