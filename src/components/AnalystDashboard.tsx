@@ -32,7 +32,7 @@ const labels: Record<string, string> = {
 };
 const booked = (row: Lead) =>
   normal(row.Status) === "CONVERTED" &&
-  normal(row["Sub-status"]) === "OPD_BOOKED";
+  ["OPD_BOOKED", "OPD_VISITED"].includes(normal(row["Sub-status"]));
 const visited = (row: Lead) =>
   normal(row.Status) === "CONVERTED" &&
   normal(row["Sub-status"]) === "OPD_VISITED";
@@ -56,6 +56,7 @@ export function AnalystDashboard() {
   const [selectedBd, setSelectedBd] = useState("");
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(14);
   const [minimum, setMinimum] = useState(0);
+  const [leadSearch, setLeadSearch] = useState("");
   const [popup, setPopup] = useState<{ title: string; leads: Lead[] } | null>(
     null,
   );
@@ -98,6 +99,7 @@ export function AnalystDashboard() {
       setFilename(file.name);
       setLeads([...unique.values()]);
       setSelectedBd("");
+      setLeadSearch("");
       setPopup(null);
       setError("");
     } catch (e) {
@@ -157,6 +159,9 @@ export function AnalystDashboard() {
   const chartLeads = selectedBd
     ? leads.filter((row) => (row.Owner?.trim() || "Unassigned") === selectedBd)
     : leads;
+  const searchTerm = leadSearch.trim().toLowerCase();
+  const searchDigits = searchTerm.replace(/\D/g, "");
+  const searchResults = searchTerm.length >= 2 ? leads.filter((row) => (row["Patient Name"] || "").toLowerCase().includes(searchTerm) || (searchDigits.length >= 2 && (row.Phone || "").replace(/\D/g, "").includes(searchDigits))) : [];
   return (
     <main className="analyst-dashboard sales-reference">
       <div className="analyst-top">
@@ -186,7 +191,7 @@ export function AnalystDashboard() {
               One valid phone number counts as one lead; its most recently
               created lead supplies the BD and status. Rows without a valid
               phone remain separate. Shared phone numbers may represent
-              different patients. Ideal L2O = currently OPD booked ÷ leads; real
+              different patients. OPD booked includes both OPD_BOOKED and OPD_VISITED. Ideal L2O = OPD booked ÷ leads; real
               L2O = currently OPD visited ÷ leads. IPD done = CLOSED +
               SUCCESSFULLY_TREATED. Current statuses are separate snapshots:
               previous OPD visits cannot be recovered from them. CASE_COMPLETED
@@ -219,6 +224,7 @@ export function AnalystDashboard() {
                 {bdNames.map((name) => <option value={name} key={name}>{name}</option>)}
               </select>
             </label>
+            <label>Search lead <input type="search" aria-label="Search lead name or phone" placeholder="Name or phone" value={leadSearch} onChange={(e) => setLeadSearch(e.target.value)} /></label>
             <label>
               Min leads{" "}
               <input
@@ -231,6 +237,7 @@ export function AnalystDashboard() {
               />
             </label>
           </div>
+          {searchTerm.length > 0 && <p className="sales-help">{searchTerm.length < 2 ? "Enter at least 2 characters to search all uploaded leads." : <>{countButton("Lead search results", searchResults)} matching leads in the uploaded file. Select the count to view details.</>}</p>}
           <p className="sales-help">
             Summary and table: latest {windowDays} calendar days ending on the
             most recent lead creation date (UTC).{" "}
@@ -398,6 +405,7 @@ export function AnalystDashboard() {
                   <tr>
                     <th>Lead ID</th>
                     <th>Patient name</th>
+                    <th>Phone</th>
                     <th>BD</th>
                     <th>Status</th>
                     <th>Sub-status</th>
@@ -408,6 +416,7 @@ export function AnalystDashboard() {
                     <tr key={`${row["Lead ID"]}-${index}`}>
                       <td>{row["Lead ID"] || "—"}</td>
                       <td>{row["Patient Name"] || "—"}</td>
+                      <td>{row.Phone || "—"}</td>
                       <td>{row.Owner || "—"}</td>
                       <td>{readable(row.Status)}</td>
                       <td>{readable(row["Sub-status"])}</td>
