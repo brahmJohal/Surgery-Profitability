@@ -872,6 +872,54 @@ textarea:focus {
 }
 .term-toggle input { accent-color: #8b6039; }
 
+/* Analyst workspace follows the device theme without affecting other modules. */
+@media (prefers-color-scheme: dark) {
+  body:has(.sales-reference) { background: #101316; color: #eceff1; }
+  body:has(.sales-reference) > #root > header { background: #171b1f; }
+  .analyst-dashboard.sales-reference { color-scheme: dark; background: #171b1e; color: #eceff1; }
+  .analyst-dashboard.sales-reference h1, .analyst-dashboard.sales-reference h2, .analyst-dashboard.sales-reference h3,
+  .sales-reference .sales-charts .lead-trend-chart h3 { color: #f3f4f5; }
+  .sales-reference .card, .sales-reference .payee-modal {
+    background: #202529; color: #eceff1; border-color: #3a4145; box-shadow: none;
+  }
+  .sales-reference .sales-metric { background: #272d31; }
+  .sales-reference .sales-metric strong { color: #f3f4f5; }
+  .sales-reference .sales-metric span, .sales-reference .sales-help,
+  .sales-reference .form-help, .sales-reference .analyst-method,
+  .sales-reference .sales-charts .lead-trend-chart p,
+  .sales-reference .sales-charts .lead-trend-note,
+  .sales-reference .lead-trend-legend { color: #b7c0c4; }
+  .sales-reference .analyst-method summary, .sales-reference .analyst-count { color: #8fd9c4; }
+  .sales-reference input, .sales-reference select, .sales-reference textarea,
+  .sales-reference .sales-toolbar input, .sales-reference .sales-toolbar select {
+    background: #272d31; color: #f3f4f5; border-color: #495259;
+  }
+  .sales-reference input::placeholder { color: #a7b1b6; }
+  .sales-reference input[type="file"]::file-selector-button {
+    background: #343d41; color: #f3f4f5; border: 1px solid #596367; border-radius: 5px; padding: 3px 8px;
+  }
+  .sales-reference .sales-tabs button, .sales-reference .sales-toolbar button {
+    background: #2a3034; color: #f0f2f3; border-color: #485157;
+  }
+  .sales-reference .sales-tabs button[aria-pressed="true"], .sales-reference .sales-tabs button.active,
+  .sales-reference .sales-toolbar button[aria-pressed="true"], .sales-reference .sales-toolbar button.active {
+    background: #11735b; color: #fff; border-color: #159474;
+  }
+  .sales-reference .sales-reference-table th, .sales-reference .analyst-scroll th { color: #b7c0c4; }
+  .sales-reference .sales-reference-table th, .sales-reference .sales-reference-table td,
+  .sales-reference .analyst-scroll th, .sales-reference .analyst-scroll td { border-color: #3a4145; }
+  .sales-reference .sales-reference-table button { color: #e8ecee; }
+  .sales-reference .sales-reference-table button[aria-pressed="true"] { color: #8fd9c4; }
+  .sales-reference .sales-reference-table button:disabled,
+  .sales-reference .analyst-count:disabled { color: #9ba5aa; }
+  .sales-reference .sales-charts .lead-trend-chart { background: transparent; }
+  .sales-reference .sales-charts .lead-trend-label { fill: #bac3c7; }
+  .sales-reference .sales-charts .lead-trend-grid { stroke: #485056; }
+  .sales-reference .modal-backdrop { background: #000b; }
+  .sales-reference .modal-close { color: #e8ecee; }
+  .sales-reference :focus-visible { outline: 2px solid #80dbc1; outline-offset: 2px; }
+}
+
 /* Sales reference dashboard: isolated from the rest of the application. */
 .sales-reference {
   width: min(calc(100% - 40px), 1800px);
