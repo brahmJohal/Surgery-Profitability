@@ -925,6 +925,29 @@ textarea:focus {
 .analyst-count { border: 0; padding: 0; background: transparent; color: #8b6039; font: inherit; text-decoration: underline; cursor: pointer; }
 .analyst-count:disabled { color: inherit; text-decoration: none; cursor: default; }
 .analyst-patient-modal { width: min(1000px, 94vw); }
+.analyst-dashboard { max-width: none; width: min(100% - 40px, 1800px); margin: 18px auto 32px; padding: 0; }
+.analyst-dashboard .card { padding: 18px 20px; min-width: 0; }
+.analyst-top { display: grid; grid-template-columns: minmax(290px, 0.9fr) minmax(0, 1.8fr); gap: 16px; align-items: stretch; }
+.analyst-top .analyst-overall { margin-top: 0; }
+.analyst-upload-card h1 { margin-bottom: 8px; }
+.analyst-upload-card > p { margin: 6px 0 10px; font-size: 13px; }
+.analyst-upload-card .field { margin-bottom: 8px; }
+.analyst-method { color: #806f61; font-size: 13px; }
+.analyst-method summary { cursor: pointer; color: #79502d; font-weight: 600; }
+.analyst-method p { margin: 8px 0 0; }
+.analyst-dashboard .analyst-section { margin-top: 16px; }
+.analyst-dashboard .analyst-top .analyst-overall { margin-top: 0; }
+.analyst-dashboard .analyst-section h2 { margin-bottom: 8px; }
+.analyst-dashboard .section-title { margin-bottom: 0; }
+.analyst-dashboard .section-title .form-help { margin: 2px 0; }
+.analyst-dashboard .lead-trends { margin: 6px 0 0; }
+.analyst-dashboard .lead-trend-note { margin: 4px 0 10px; line-height: 1.35; }
+.analyst-dashboard .lead-trend-grid-layout { gap: 14px; }
+.analyst-dashboard .lead-trend-chart { padding: 12px 16px; }
+.analyst-dashboard .lead-trend-chart svg { max-height: 260px; }
+.analyst-dashboard .analyst-scroll th, .analyst-dashboard .analyst-scroll td { padding: 8px 10px; }
+@media (max-width: 1000px) { .analyst-top { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .analyst-dashboard { width: calc(100% - 24px); margin-top: 12px; } .analyst-dashboard .card { padding: 14px; } .analyst-dashboard .lead-trend-chart svg { max-height: none; } }
 .modal-backdrop { background: #26160dcc; }
 .confirm-modal p,
 .upi-modal p,
