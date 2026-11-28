@@ -871,6 +871,75 @@ textarea:focus {
   color: #79502d;
 }
 .term-toggle input { accent-color: #8b6039; }
+
+/* Sales reference dashboard: isolated from the rest of the application. */
+.sales-reference {
+  width: min(calc(100% - 40px), 1800px);
+  max-width: none;
+  margin: 18px auto 36px;
+  padding: 18px 20px 28px;
+  color: #181818;
+  background: #fff;
+  border-radius: 12px;
+}
+.sales-reference h1, .sales-reference h2, .sales-reference h3 {
+  color: #181818;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.sales-reference h1 { font-size: 20px; margin: 0 0 10px; }
+.sales-reference h2 { font-size: 17px; margin: 0 0 10px; }
+.sales-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 12px; }
+.sales-toolbar label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.sales-toolbar input, .sales-toolbar select { width: auto; min-width: 100px; max-width: 240px; height: 36px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 8px; background: #f5f5f4; }
+.sales-toolbar input[type="search"] { width: 180px; }
+.sales-tabs { display: inline-flex; flex-wrap: wrap; gap: 0; }
+.sales-tabs button, .sales-toolbar button {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f4f4f3;
+  color: #191919;
+  font: inherit;
+  cursor: pointer;
+}
+.sales-tabs button[aria-pressed="true"], .sales-tabs button.active,
+.sales-toolbar button[aria-pressed="true"], .sales-toolbar button.active {
+  color: #fff;
+  background: #11735b;
+  border-color: #11735b;
+}
+.sales-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 12px 0 18px; }
+.sales-metric { min-width: 0; padding: 12px; border-radius: 11px; background: #f3f3f2; }
+.sales-metric strong, .sales-metric span { display: block; }
+.sales-metric strong { font-size: 24px; line-height: 1.15; color: #181818; }
+.sales-metric span { color: #6b6b6b; font-size: 13px; margin-top: 4px; }
+.sales-metric button { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-decoration: underline; }
+.sales-help { color: #6a6a6a; font-size: 13px; line-height: 1.45; margin: 10px 0; }
+.sales-charts { margin: 16px 0 22px; }
+.sales-charts .lead-trends { margin: 0; }
+.sales-charts .lead-trend-grid-layout { gap: 20px; }
+.sales-charts .lead-trend-chart { background: #fff; border: 0; border-radius: 0; padding: 0; }
+.sales-charts .lead-trend-chart h3 { color: #181818; font-size: 15px; }
+.sales-charts .lead-trend-chart p, .sales-charts .lead-trend-note { color: #686868; }
+.sales-charts .lead-trend-chart svg { max-height: 260px; }
+.sales-charts .lead-trend-label { fill: #555; }
+.sales-charts .lead-trend-grid { stroke: #ddd; }
+.sales-reference-table { width: 100%; overflow-x: auto; margin-top: 12px; }
+.sales-reference-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.sales-reference-table th, .sales-reference-table td { padding: 10px 8px; border-bottom: 1px solid #dedede; white-space: nowrap; }
+.sales-reference-table th { color: #6a6a6a; font-weight: 600; }
+.sales-reference-table button { border: 0; background: none; padding: 0; color: #181818; font: inherit; text-decoration: underline dotted; cursor: pointer; }
+.sales-reference-table button:disabled { color: #777; cursor: default; text-decoration: none; }
+.sales-reference-table button[aria-pressed="true"] { color: #11735b; font-weight: 700; }
+@media (max-width: 760px) {
+  .sales-reference { width: calc(100% - 20px); margin: 10px auto 24px; padding: 14px 12px 20px; }
+  .sales-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sales-toolbar { align-items: stretch; }
+  .sales-toolbar input[type="search"] { width: 100%; max-width: none; }
+  .sales-charts .lead-trend-chart svg { max-height: none; }
+}
 .lead-trends { margin: 18px 0; }
 .lead-trend-note { color: #806f61; font-size: 13px; line-height: 1.5; }
 .lead-trend-grid-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
