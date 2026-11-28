@@ -55,7 +55,8 @@ export function AnalystDashboard() {
   const [missingDates, setMissingDates] = useState(0);
   const [selectedBd, setSelectedBd] = useState("");
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(14);
-  const [minimum, setMinimum] = useState(0);
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [leadSearch, setLeadSearch] = useState("");
   const [popup, setPopup] = useState<{ title: string; leads: Lead[] } | null>(
     null,
@@ -100,6 +101,8 @@ export function AnalystDashboard() {
       setLeads([...unique.values()]);
       setSelectedBd("");
       setLeadSearch("");
+      setCreatedFrom("");
+      setCreatedTo("");
       setPopup(null);
       setError("");
     } catch (e) {
@@ -112,6 +115,13 @@ export function AnalystDashboard() {
     }
   };
   const filteredLeads = useMemo(() => {
+    if (createdFrom && createdTo && createdFrom > createdTo) return [];
+    if (createdFrom || createdTo) return leads.filter((row) => {
+      const time = Date.parse(row["Created At"]);
+      if (!Number.isFinite(time)) return false;
+      const day = new Date(time).toISOString().slice(0, 10);
+      return (!createdFrom || day >= createdFrom) && (!createdTo || day <= createdTo);
+    });
     const dates = leads
       .map((row) => Date.parse(row["Created At"]))
       .filter(Number.isFinite);
@@ -124,7 +134,7 @@ export function AnalystDashboard() {
       const day = Math.floor(Date.parse(row["Created At"]) / 86400000);
       return Number.isFinite(day) && day <= endDay && day > endDay - windowDays;
     });
-  }, [leads, windowDays]);
+  }, [leads, windowDays, createdFrom, createdTo]);
   const report = useMemo(() => {
     const groups = new Map<string, Lead[]>();
     const statuses = new Map<string, Lead[]>();
@@ -156,9 +166,10 @@ export function AnalystDashboard() {
     interestedRows = scopedLeads.filter(interested),
     convertedRows = scopedLeads.filter(converted),
     goodRows = scopedLeads.filter(good);
+  const chartSource = createdFrom || createdTo ? filteredLeads : leads;
   const chartLeads = selectedBd
-    ? leads.filter((row) => (row.Owner?.trim() || "Unassigned") === selectedBd)
-    : leads;
+    ? chartSource.filter((row) => (row.Owner?.trim() || "Unassigned") === selectedBd)
+    : chartSource;
   const searchTerm = leadSearch.trim().toLowerCase();
   const searchDigits = searchTerm.replace(/\D/g, "");
   const searchResults = searchTerm.length >= 2 ? leads.filter((row) => (row["Patient Name"] || "").toLowerCase().includes(searchTerm) || (searchDigits.length >= 2 && (row.Phone || "").replace(/\D/g, "").includes(searchDigits))) : [];
@@ -209,9 +220,9 @@ export function AnalystDashboard() {
                 <button
                   key={days}
                   type="button"
-                  className={windowDays === days ? "active" : ""}
-                  aria-pressed={windowDays === days}
-                  onClick={() => setWindowDays(days)}
+                  className={!createdFrom && !createdTo && windowDays === days ? "active" : ""}
+                  aria-pressed={!createdFrom && !createdTo && windowDays === days}
+                  onClick={() => { setWindowDays(days); setCreatedFrom(""); setCreatedTo(""); }}
                 >
                   T-{days}
                 </button>
@@ -225,22 +236,13 @@ export function AnalystDashboard() {
               </select>
             </label>
             <label>Search lead <input type="search" aria-label="Search lead name or phone" placeholder="Name or phone" value={leadSearch} onChange={(e) => setLeadSearch(e.target.value)} /></label>
-            <label>
-              Min leads{" "}
-              <input
-                type="number"
-                min="0"
-                value={minimum}
-                onChange={(e) =>
-                  setMinimum(Math.max(0, Number(e.target.value) || 0))
-                }
-              />
-            </label>
+            <label>Created from <input type="date" aria-label="Created from" value={createdFrom} onChange={(e) => setCreatedFrom(e.target.value)} /></label>
+            <label>Created to <input type="date" aria-label="Created to" value={createdTo} onChange={(e) => setCreatedTo(e.target.value)} /></label>
           </div>
           {searchTerm.length > 0 && <p className="sales-help">{searchTerm.length < 2 ? "Enter at least 2 characters to search all uploaded leads." : <>{countButton("Lead search results", searchResults)} matching leads in the uploaded file. Select the count to view details.</>}</p>}
+          {createdFrom && createdTo && createdFrom > createdTo && <p role="alert">Created from must be on or before created to.</p>}
           <p className="sales-help">
-            Summary and table: latest {windowDays} calendar days ending on the
-            most recent lead creation date (UTC).{" "}
+            {createdFrom || createdTo ? `Custom creation dates: ${createdFrom || "earliest"} to ${createdTo || "latest"} (inclusive, UTC). Charts use only leads within this range.` : `Summary and table: latest ${windowDays} calendar days ending on the most recent lead creation date (UTC).`}{" "}
             {selectedBd ? `Showing ${selectedBd}.` : "Showing all BDs."} Missing
             creation dates are excluded.
           </p>
@@ -266,17 +268,16 @@ export function AnalystDashboard() {
               Charts: {selectedBd ? selectedBd : "all BDs"}. Each point uses the
               trailing window ending on that day. Good leads are currently
               Interested or Converted; past statuses cannot be recovered from
-              the dump.
+              the dump. {createdFrom || createdTo ? "Rolling windows exclude leads outside the selected dates, including earlier lookback days." : ""}
             </p>
             <LeadTrendCharts leads={chartLeads} />
           </section>
           <section className="sales-reference-table">
             <h2>BD performance</h2>
             <p className="sales-help">
-              Select a BD above to filter this dashboard. Minimum leads filters this table.
+              Select a BD above to filter this dashboard.
             </p>
             {selectedBd && scopedLeads.length === 0 && <p className="sales-help">No leads for this BD in the selected time window.</p>}
-            {selectedBd && scopedLeads.length > 0 && scopedLeads.length < minimum && <p className="sales-help">This BD is below the minimum leads filter.</p>}
             <div className="analyst-scroll">
               <table>
                 <thead>
@@ -297,7 +298,7 @@ export function AnalystDashboard() {
                 <tbody>
                   {[...report.groups]
                     .filter(
-                      ([owner, rows]) => (!selectedBd || owner === selectedBd) && rows.length >= minimum,
+                      ([owner]) => !selectedBd || owner === selectedBd,
                     )
                     .sort(
                       (a, b) =>
