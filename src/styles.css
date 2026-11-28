@@ -871,6 +871,19 @@ textarea:focus {
   color: #79502d;
 }
 .term-toggle input { accent-color: #8b6039; }
+.lead-trends { margin: 18px 0; }
+.lead-trend-note { color: #806f61; font-size: 13px; line-height: 1.5; }
+.lead-trend-grid-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.lead-trend-chart { padding: 20px; background: #fffdf9; border: 1px solid #e6d8c7; border-radius: 14px; min-width: 0; }
+.lead-trend-chart h3 { margin: 0 0 5px; font-size: 16px; color: #342317; }
+.lead-trend-chart p { margin: 0 0 8px; color: #806f61; font-size: 13px; }
+.lead-trend-chart svg { width: 100%; height: auto; display: block; }
+.lead-trend-grid { stroke: #e9ded2; stroke-width: 1; }
+.lead-trend-label { fill: #806f61; font-size: 12px; }
+.lead-trend-legend { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; color: #6d5745; font-size: 12px; }
+.lead-trend-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.lead-trend-legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; }
+@media (max-width: 760px) { .lead-trend-grid-layout { grid-template-columns: 1fr; } }
 .payout-role-field {
   align-content: start;
 }
